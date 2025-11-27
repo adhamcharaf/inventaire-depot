@@ -17,6 +17,29 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
   const [cubes, setCubes] = useState(palette.cubes)
   const [hoveredCube, setHoveredCube] = useState(null)
 
+  // Historique pour Undo
+  const [history, setHistory] = useState([])
+  const MAX_HISTORY = 50
+
+  // Sauvegarder état avant modification
+  const saveToHistory = useCallback((currentCubes) => {
+    setHistory(prev => {
+      const newHistory = [...prev, [...currentCubes]]
+      if (newHistory.length > MAX_HISTORY) {
+        newHistory.shift()
+      }
+      return newHistory
+    })
+  }, [])
+
+  // Annuler dernière action
+  const handleUndo = useCallback(() => {
+    if (history.length === 0) return
+    const previousState = history[history.length - 1]
+    setHistory(prev => prev.slice(0, -1))
+    setCubes(previousState)
+  }, [history])
+
   // Rotation de la caméra
   const rotationRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 4 })
   const isDraggingRef = useRef(false)
@@ -146,11 +169,13 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
 
     if (cube) {
       if (cube.isPresent) {
-        // Retirer le cube et tous ceux au-dessus
+        // Sauvegarder puis retirer le cube et tous ceux au-dessus
+        saveToHistory(cubes)
         const newCubes = removeCubeWithGravity(cubes, cube.x, cube.y, cube.z, palette.dimensions.height)
         setCubes(newCubes)
       } else {
-        // Ajouter le cube (si support existe)
+        // Sauvegarder puis ajouter le cube (si support existe)
+        saveToHistory(cubes)
         const newCubes = addCube(cubes, cube.x, cube.y, cube.z)
         setCubes(newCubes)
       }
@@ -159,10 +184,12 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
 
   // Actions rapides
   const handleFill = () => {
+    saveToHistory(cubes)
     setCubes(generateFullCubes(palette.dimensions))
   }
 
   const handleEmpty = () => {
+    saveToHistory(cubes)
     setCubes(emptyAllCubes())
   }
 
@@ -237,6 +264,8 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         onResetView={handleResetView}
         onViewChange={setView}
         onZoom={handleZoom}
+        onUndo={handleUndo}
+        canUndo={history.length > 0}
       />
     </div>
   )
