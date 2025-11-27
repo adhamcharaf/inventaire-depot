@@ -1,16 +1,16 @@
 // Configuration centralisée des dimensions
 export const PALETTE_CONFIG = {
-  length: { min: 1, max: 20, default: 5 },
-  width: { min: 1, max: 20, default: 5 },
-  height: { min: 1, max: 10, default: 4 }
+  length: { min: 1, max: 50, default: 5 },
+  width: { min: 1, max: 50, default: 5 },
+  height: { min: 1, max: 50, default: 4 }
 }
 
-// Couleurs des cubes
+// Couleurs des cubes (palette carton)
 export const CUBE_COLORS = {
-  fill: 0x3B82F6,      // Bleu Tailwind 500
-  edge: 0x1E3A8A,      // Bleu Tailwind 900
-  hover: 0x60A5FA,     // Bleu Tailwind 400
-  absent: 0xE2E8F0     // Slate 200 (emplacement vide)
+  fill: 0xC9A66B,      // Carton naturel
+  edge: 0x8B6914,      // Contour marron foncé
+  hover: 0xE8D4B0,     // Carton clair au survol
+  absent: 0xF5F0E8     // Emplacement vide beige
 }
 
 // Auto-save interval (ms)

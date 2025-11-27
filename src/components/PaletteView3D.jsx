@@ -111,9 +111,9 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
     }
 
     if (e.buttons === 1 && isDraggingRef.current) {
-      // Rotation
-      rotationRef.current.theta -= dx * 0.01
-      rotationRef.current.phi = Math.max(0.1, Math.min(Math.PI - 0.1, rotationRef.current.phi + dy * 0.01))
+      // Rotation (inversée pour navigation intuitive)
+      rotationRef.current.theta += dx * 0.01
+      rotationRef.current.phi = Math.max(0.1, Math.min(Math.PI - 0.1, rotationRef.current.phi - dy * 0.01))
       updateCameraPosition()
     } else if (e.buttons === 0) {
       // Hover
