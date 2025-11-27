@@ -24,19 +24,13 @@ export class CubeManager {
     }
     this.cubeMap.clear()
 
-    const { length, width, height } = this.dimensions
-
-    // Créer tous les cubes (présents et absents)
-    for (let x = 0; x < length; x++) {
-      for (let y = 0; y < width; y++) {
-        for (let z = 0; z < height; z++) {
-          const isPresent = hasCube(cubesArray, x, y, z)
-          const cube = createCube(x, y, z, isPresent)
-          this.cubesGroup.add(cube)
-          this.cubeMap.set(`${x},${y},${z}`, cube)
-        }
-      }
-    }
+    // Créer seulement les cubes présents (les absents disparaissent complètement)
+    cubesArray.forEach(pos => {
+      const [x, y, z] = pos.split(',').map(Number)
+      const cube = createCube(x, y, z, true)
+      this.cubesGroup.add(cube)
+      this.cubeMap.set(pos, cube)
+    })
   }
 
   /**
