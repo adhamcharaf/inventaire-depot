@@ -42,9 +42,14 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
 
   // Rotation de la caméra
   const rotationRef = useRef({ theta: Math.PI / 4, phi: Math.PI / 4 })
+  const zoomRef = useRef(1)
   const isDraggingRef = useRef(false)
   const lastPointerRef = useRef({ x: 0, y: 0 })
   const pointerDownRef = useRef({ x: 0, y: 0 })
+
+  // Pinch-to-zoom
+  const lastPinchDistRef = useRef(0)
+  const isPinchingRef = useRef(false)
 
   // Auto-save
   const handleSave = useCallback((p) => {
@@ -100,7 +105,8 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
     const { length, width, height } = palette.dimensions
 
     const maxDim = Math.max(length, width, height)
-    const distance = maxDim * 2.5
+    const baseDistance = maxDim * 2.5
+    const distance = baseDistance / zoomRef.current
 
     const centerX = (length - 1) / 2
     const centerY = (height - 1) / 2
@@ -195,7 +201,38 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
 
   const handleResetView = () => {
     rotationRef.current = { theta: Math.PI / 4, phi: Math.PI / 4 }
+    zoomRef.current = 1
     updateCameraPosition()
+  }
+
+  // Pinch-to-zoom handlers
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      isPinchingRef.current = true
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      lastPinchDistRef.current = dist
+    }
+  }
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && isPinchingRef.current) {
+      e.preventDefault()
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      )
+      const delta = dist - lastPinchDistRef.current
+      zoomRef.current = Math.max(0.5, Math.min(5, zoomRef.current * (1 + delta * 0.005)))
+      lastPinchDistRef.current = dist
+      updateCameraPosition()
+    }
+  }
+
+  const handleTouchEnd = () => {
+    isPinchingRef.current = false
   }
 
   // Vues rapides
@@ -217,14 +254,6 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
     updateCameraPosition()
   }
 
-  // Zoom
-  const handleZoom = (delta) => {
-    if (!sceneRef.current) return
-    const { camera } = sceneRef.current
-    const factor = delta > 0 ? 1.1 : 0.9
-    camera.position.multiplyScalar(factor)
-  }
-
   // Stats
   const capacity = palette.dimensions.length * palette.dimensions.width * palette.dimensions.height
   const present = cubes.length
@@ -244,7 +273,8 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
       {/* Canvas 3D */}
       <div
         ref={containerRef}
-        className="flex-1 touch-none"
+        className="flex-1"
+        style={{ touchAction: 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -254,7 +284,9 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
             setHoveredCube(null)
           }
         }}
-        onWheel={(e) => handleZoom(e.deltaY)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       />
 
       {/* Contrôles */}
@@ -263,7 +295,6 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         onEmpty={handleEmpty}
         onResetView={handleResetView}
         onViewChange={setView}
-        onZoom={handleZoom}
         onUndo={handleUndo}
         canUndo={history.length > 0}
       />

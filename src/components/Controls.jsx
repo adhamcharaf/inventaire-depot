@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function Controls({ onFill, onEmpty, onResetView, onViewChange, onZoom, onUndo, canUndo }) {
+export default function Controls({ onFill, onEmpty, onResetView, onViewChange, onUndo, canUndo }) {
   const [confirmEmpty, setConfirmEmpty] = useState(false)
 
   function handleEmpty() {
@@ -23,30 +23,18 @@ export default function Controls({ onFill, onEmpty, onResetView, onViewChange, o
         <ViewButton label="Iso" onClick={() => onViewChange('iso')} active />
       </div>
 
-      {/* Zoom + Undo */}
-      <div className="flex justify-center gap-2 mb-4">
-        <button
-          onClick={() => onZoom(-1)}
-          className="w-11 h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-full flex items-center justify-center text-xl font-bold text-slate-600 transition-colors"
-        >
-          +
-        </button>
+      {/* Reset + Undo */}
+      <div className="flex justify-center gap-3 mb-4">
         <button
           onClick={onResetView}
-          className="px-3 h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-full flex items-center justify-center text-sm font-medium text-slate-600 transition-colors"
+          className="px-4 h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-full flex items-center justify-center text-sm font-medium text-slate-600 transition-colors"
         >
-          Reset
-        </button>
-        <button
-          onClick={() => onZoom(1)}
-          className="w-11 h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-full flex items-center justify-center text-xl font-bold text-slate-600 transition-colors"
-        >
-          -
+          Reset vue
         </button>
         <button
           onClick={onUndo}
           disabled={!canUndo}
-          className={`px-3 h-11 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+          className={`px-4 h-11 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
             canUndo
               ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
               : 'bg-slate-100 text-slate-300'
