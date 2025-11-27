@@ -42,7 +42,7 @@ export function createScene(container, dimensions) {
   )
   gridHelper.position.set(
     (dimensions.length - 1) / 2,
-    -0.01,
+    -0.5,
     (dimensions.width - 1) / 2
   )
   scene.add(gridHelper)
@@ -83,17 +83,15 @@ export function createCube(x, y, z, isPresent = true, maxHeight = 1) {
 
   // Calculer la couleur selon le niveau Z (dégradé foncé→clair)
   const t = maxHeight > 1 ? z / (maxHeight - 1) : 0.5
-  const colorBottom = new THREE.Color(0x8B6914)  // Carton foncé
-  const colorTop = new THREE.Color(0xE8D4B0)     // Carton clair
+  const colorBottom = new THREE.Color(0x6B4E0A)  // Carton très foncé (marron)
+  const colorTop = new THREE.Color(0xF5E6C8)     // Carton très clair (beige)
   const cubeColor = new THREE.Color().lerpColors(colorBottom, colorTop, t)
 
   group.userData = { x, y, z, isPresent, originalColor: cubeColor.getHex() }
 
-  // Cube plein avec couleur selon niveau
+  // Cube plein avec couleur selon niveau - OPAQUE
   const material = new THREE.MeshLambertMaterial({
-    color: cubeColor,
-    transparent: true,
-    opacity: 0.9
+    color: cubeColor
   })
   const mesh = new THREE.Mesh(geometry, material)
   group.add(mesh)
@@ -120,11 +118,9 @@ export function highlightCube(cubeGroup, highlight = true) {
   if (mesh && mesh.material) {
     if (highlight) {
       mesh.material.color.setHex(CUBE_COLORS.hover)
-      mesh.material.opacity = 1
     } else {
       // Restaurer la couleur originale (selon le niveau)
       mesh.material.color.setHex(cubeGroup.userData.originalColor)
-      mesh.material.opacity = 0.9
     }
   }
 }
