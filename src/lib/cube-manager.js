@@ -25,9 +25,10 @@ export class CubeManager {
     this.cubeMap.clear()
 
     // Créer seulement les cubes présents (les absents disparaissent complètement)
+    const maxHeight = this.dimensions.height
     cubesArray.forEach(pos => {
       const [x, y, z] = pos.split(',').map(Number)
-      const cube = createCube(x, y, z, true)
+      const cube = createCube(x, y, z, true, maxHeight)
       this.cubesGroup.add(cube)
       this.cubeMap.set(pos, cube)
     })

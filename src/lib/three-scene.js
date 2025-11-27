@@ -47,54 +47,62 @@ export function createScene(container, dimensions) {
   )
   scene.add(gridHelper)
 
+  // Wireframe de la palette complète
+  const boxGeometry = new THREE.BoxGeometry(
+    dimensions.length,
+    dimensions.height,
+    dimensions.width
+  )
+  const wireframeMaterial = new THREE.LineBasicMaterial({
+    color: 0x94A3B8,
+    transparent: true,
+    opacity: 0.5
+  })
+  const wireframe = new THREE.LineSegments(
+    new THREE.EdgesGeometry(boxGeometry),
+    wireframeMaterial
+  )
+  wireframe.position.set(
+    (dimensions.length - 1) / 2,
+    (dimensions.height - 1) / 2,
+    (dimensions.width - 1) / 2
+  )
+  scene.add(wireframe)
+
   return { scene, camera, renderer }
 }
 
 /**
- * Créer un cube avec contours
+ * Créer un cube avec contours et couleur selon le niveau
  */
-export function createCube(x, y, z, isPresent = true) {
+export function createCube(x, y, z, isPresent = true, maxHeight = 1) {
   const group = new THREE.Group()
-  group.userData = { x, y, z, isPresent }
 
   const size = 0.9 // Légèrement plus petit pour espacement
   const geometry = new THREE.BoxGeometry(size, size, size)
 
-  if (isPresent) {
-    // Cube plein
-    const material = new THREE.MeshLambertMaterial({
-      color: CUBE_COLORS.fill,
-      transparent: true,
-      opacity: 0.9
-    })
-    const mesh = new THREE.Mesh(geometry, material)
-    group.add(mesh)
+  // Calculer la couleur selon le niveau Z (dégradé foncé→clair)
+  const t = maxHeight > 1 ? z / (maxHeight - 1) : 0.5
+  const colorBottom = new THREE.Color(0x8B6914)  // Carton foncé
+  const colorTop = new THREE.Color(0xE8D4B0)     // Carton clair
+  const cubeColor = new THREE.Color().lerpColors(colorBottom, colorTop, t)
 
-    // Contours
-    const edges = new THREE.EdgesGeometry(geometry)
-    const lineMaterial = new THREE.LineBasicMaterial({ color: CUBE_COLORS.edge })
-    const wireframe = new THREE.LineSegments(edges, lineMaterial)
-    group.add(wireframe)
-  } else {
-    // Cube absent (fantôme)
-    const material = new THREE.MeshLambertMaterial({
-      color: CUBE_COLORS.absent,
-      transparent: true,
-      opacity: 0.15
-    })
-    const mesh = new THREE.Mesh(geometry, material)
-    group.add(mesh)
+  group.userData = { x, y, z, isPresent, originalColor: cubeColor.getHex() }
 
-    // Contours légers
-    const edges = new THREE.EdgesGeometry(geometry)
-    const lineMaterial = new THREE.LineBasicMaterial({
-      color: CUBE_COLORS.absent,
-      transparent: true,
-      opacity: 0.3
-    })
-    const wireframe = new THREE.LineSegments(edges, lineMaterial)
-    group.add(wireframe)
-  }
+  // Cube plein avec couleur selon niveau
+  const material = new THREE.MeshLambertMaterial({
+    color: cubeColor,
+    transparent: true,
+    opacity: 0.9
+  })
+  const mesh = new THREE.Mesh(geometry, material)
+  group.add(mesh)
+
+  // Contours
+  const edges = new THREE.EdgesGeometry(geometry)
+  const lineMaterial = new THREE.LineBasicMaterial({ color: CUBE_COLORS.edge })
+  const wireframe = new THREE.LineSegments(edges, lineMaterial)
+  group.add(wireframe)
 
   // Position (y = hauteur dans Three.js)
   group.position.set(x, z, y)
@@ -114,9 +122,9 @@ export function highlightCube(cubeGroup, highlight = true) {
       mesh.material.color.setHex(CUBE_COLORS.hover)
       mesh.material.opacity = 1
     } else {
-      const isPresent = cubeGroup.userData.isPresent
-      mesh.material.color.setHex(isPresent ? CUBE_COLORS.fill : CUBE_COLORS.absent)
-      mesh.material.opacity = isPresent ? 0.9 : 0.15
+      // Restaurer la couleur originale (selon le niveau)
+      mesh.material.color.setHex(cubeGroup.userData.originalColor)
+      mesh.material.opacity = 0.9
     }
   }
 }
