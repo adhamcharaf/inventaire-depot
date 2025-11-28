@@ -2,25 +2,40 @@ import { useState, useEffect } from 'react'
 import Home from './components/Home'
 import PaletteForm from './components/PaletteForm'
 import PaletteView3D from './components/PaletteView3D'
-import { getAllPalettes, createPalette, getPalette, updatePalette, deletePalette } from './db/indexeddb'
+import {
+  getAllPalettes,
+  createPalette,
+  getPalette,
+  updatePalette,
+  deletePalette,
+  getAllGroups,
+  createGroup,
+  deleteGroup,
+  updatePaletteGroup
+} from './db/indexeddb'
 
 export default function App() {
   const [screen, setScreen] = useState('home')
   const [palettes, setPalettes] = useState([])
+  const [groups, setGroups] = useState([])
   const [currentPalette, setCurrentPalette] = useState(null)
 
   useEffect(() => {
-    loadPalettes()
+    loadData()
   }, [])
 
-  async function loadPalettes() {
-    const data = await getAllPalettes()
-    setPalettes(data)
+  async function loadData() {
+    const [palettesData, groupsData] = await Promise.all([
+      getAllPalettes(),
+      getAllGroups()
+    ])
+    setPalettes(palettesData)
+    setGroups(groupsData)
   }
 
-  async function handleCreate(dimensions, name) {
-    const palette = await createPalette(dimensions, name)
-    await loadPalettes()
+  async function handleCreate(dimensions, name, groupId) {
+    const palette = await createPalette(dimensions, name, groupId)
+    await loadData()
     setCurrentPalette(palette)
     setScreen('view')
   }
@@ -35,7 +50,7 @@ export default function App() {
 
   async function handleDelete(id) {
     await deletePalette(id)
-    await loadPalettes()
+    await loadData()
   }
 
   async function handleUpdatePalette(updated) {
@@ -43,8 +58,23 @@ export default function App() {
     setCurrentPalette(updated)
   }
 
+  async function handleCreateGroup(name) {
+    await createGroup(name)
+    await loadData()
+  }
+
+  async function handleDeleteGroup(id) {
+    await deleteGroup(id)
+    await loadData()
+  }
+
+  async function handleChangePaletteGroup(paletteId, groupId) {
+    await updatePaletteGroup(paletteId, groupId)
+    await loadData()
+  }
+
   function handleBack() {
-    loadPalettes()
+    loadData()
     setCurrentPalette(null)
     setScreen('home')
   }
@@ -54,13 +84,18 @@ export default function App() {
       {screen === 'home' && (
         <Home
           palettes={palettes}
+          groups={groups}
           onNew={() => setScreen('form')}
           onResume={handleResume}
           onDelete={handleDelete}
+          onCreateGroup={handleCreateGroup}
+          onDeleteGroup={handleDeleteGroup}
+          onChangePaletteGroup={handleChangePaletteGroup}
         />
       )}
       {screen === 'form' && (
         <PaletteForm
+          groups={groups}
           onCreate={handleCreate}
           onBack={() => setScreen('home')}
         />

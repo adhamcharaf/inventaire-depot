@@ -1,12 +1,38 @@
+import { useState } from 'react'
 import PaletteList from './PaletteList'
+import GroupManager from './GroupManager'
 
-export default function Home({ palettes, onNew, onResume, onDelete }) {
+export default function Home({
+  palettes,
+  groups,
+  onNew,
+  onResume,
+  onDelete,
+  onCreateGroup,
+  onDeleteGroup,
+  onChangePaletteGroup
+}) {
+  const [showGroupManager, setShowGroupManager] = useState(false)
+
   return (
     <div className="h-full flex flex-col safe-top safe-bottom">
       {/* Header */}
       <header className="bg-blue-500 text-white px-4 py-6">
-        <h1 className="text-2xl font-bold">Inventaire Palettes</h1>
-        <p className="text-blue-100 text-sm mt-1">Comptez vos articles en 3D</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Inventaire Palettes</h1>
+            <p className="text-blue-100 text-sm mt-1">Comptez vos articles en 3D</p>
+          </div>
+          <button
+            onClick={() => setShowGroupManager(true)}
+            className="p-2 hover:bg-blue-600 rounded-lg transition-colors"
+            title="Gérer les groupes"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {/* Bouton nouvelle palette */}
@@ -28,8 +54,10 @@ export default function Home({ palettes, onNew, onResume, onDelete }) {
             </h2>
             <PaletteList
               palettes={palettes}
+              groups={groups}
               onResume={onResume}
               onDelete={onDelete}
+              onChangePaletteGroup={onChangePaletteGroup}
             />
           </>
         ) : (
@@ -40,6 +68,16 @@ export default function Home({ palettes, onNew, onResume, onDelete }) {
           </div>
         )}
       </div>
+
+      {/* Modal de gestion des groupes */}
+      {showGroupManager && (
+        <GroupManager
+          groups={groups}
+          onCreateGroup={onCreateGroup}
+          onDeleteGroup={onDeleteGroup}
+          onClose={() => setShowGroupManager(false)}
+        />
+      )}
     </div>
   )
 }
