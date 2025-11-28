@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { PALETTE_CONFIG } from '../lib/config'
 
-export default function PaletteForm({ onCreate, onBack }) {
+export default function PaletteForm({ groups, onCreate, onBack }) {
   const [length, setLength] = useState(PALETTE_CONFIG.length.default)
   const [width, setWidth] = useState(PALETTE_CONFIG.width.default)
   const [height, setHeight] = useState(PALETTE_CONFIG.height.default)
   const [name, setName] = useState('')
+  const [groupId, setGroupId] = useState('')
 
   const capacity = length * width * height
 
   function handleSubmit(e) {
     e.preventDefault()
-    onCreate({ length, width, height }, name)
+    onCreate({ length, width, height }, name, groupId || null)
   }
 
   return (
@@ -43,6 +44,25 @@ export default function PaletteForm({ onCreate, onBack }) {
             className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
           />
         </div>
+
+        {/* Sélection du groupe */}
+        {groups.length > 0 && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-600 mb-2">
+              Groupe (optionnel)
+            </label>
+            <select
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+            >
+              <option value="">Sans groupe</option>
+              {groups.map(group => (
+                <option key={group.id} value={group.id}>{group.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Sliders dimensions */}
         <div className="space-y-6 flex-1">
