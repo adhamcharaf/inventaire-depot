@@ -62,12 +62,15 @@ function generateFullCubes(dimensions) {
   return cubes
 }
 
-function calculateStats(cubes, dimensions) {
+function calculateStats(cubes, dimensions, extraCartons = 0) {
   const capacity = dimensions.length * dimensions.width * dimensions.height
   const present = cubes.length
+  const totalPresent = present + extraCartons
   return {
     capacity,
     present,
+    extraCartons,
+    totalPresent,
     fillRate: ((present / capacity) * 100).toFixed(1)
   }
 }
@@ -82,7 +85,8 @@ export async function createPalette(dimensions, name = '', groupId = null) {
     name: name || `Palette ${new Date().toLocaleDateString('fr-FR')}`,
     dimensions,
     cubes,
-    stats: calculateStats(cubes, dimensions),
+    extraCartons: 0,
+    stats: calculateStats(cubes, dimensions, 0),
     groupId,
     createdAt: now,
     updatedAt: now
@@ -130,9 +134,11 @@ export async function getAllPalettes() {
 export async function updatePalette(palette) {
   const database = await openDB()
 
+  const extraCartons = palette.extraCartons || 0
   const updated = {
     ...palette,
-    stats: calculateStats(palette.cubes, palette.dimensions),
+    extraCartons,
+    stats: calculateStats(palette.cubes, palette.dimensions, extraCartons),
     updatedAt: Date.now()
   }
 
