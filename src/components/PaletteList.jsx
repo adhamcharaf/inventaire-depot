@@ -39,9 +39,11 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
 
   function calculateGroupStats(groupPalettes) {
     const totalPresent = groupPalettes.reduce((sum, p) => sum + p.stats.present, 0)
+    const totalExtra = groupPalettes.reduce((sum, p) => sum + (p.extraCartons || 0), 0)
     const totalCapacity = groupPalettes.reduce((sum, p) => sum + p.stats.capacity, 0)
+    const grandTotal = totalPresent + totalExtra
     const fillRate = totalCapacity > 0 ? ((totalPresent / totalCapacity) * 100).toFixed(1) : 0
-    return { totalPresent, totalCapacity, fillRate }
+    return { totalPresent, totalExtra, totalCapacity, grandTotal, fillRate }
   }
 
   // Grouper les palettes par groupe
@@ -66,28 +68,40 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
     }
   })
 
-  const PaletteCard = ({ palette }) => (
-    <div
-      onClick={() => onResume(palette.id)}
-      className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 active:bg-slate-50 transition-colors"
-    >
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <h3 className="font-semibold text-slate-900">{palette.name}</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {palette.dimensions.length} × {palette.dimensions.width} × {palette.dimensions.height}
-          </p>
-        </div>
+  const PaletteCard = ({ palette }) => {
+    const extraCartons = palette.extraCartons || 0
+    const totalCartons = palette.stats.present + extraCartons
 
-        <div className="text-right">
-          <div className="text-lg font-bold text-blue-500">
-            {palette.stats.fillRate}%
+    return (
+      <div
+        onClick={() => onResume(palette.id)}
+        className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 active:bg-slate-50 transition-colors"
+      >
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="font-semibold text-slate-900">{palette.name}</h3>
+            <p className="text-sm text-slate-500 mt-1">
+              {palette.dimensions.length} × {palette.dimensions.width} × {palette.dimensions.height}
+            </p>
           </div>
-          <div className="text-xs text-slate-400">
-            {palette.stats.present}/{palette.stats.capacity}
+
+          <div className="text-right">
+            <div className="text-lg font-bold text-blue-500">
+              {palette.stats.fillRate}%
+            </div>
+            <div className="text-xs text-slate-400">
+              {palette.stats.present}/{palette.stats.capacity}
+              {extraCartons > 0 && (
+                <span className="text-amber-600"> +{extraCartons}</span>
+              )}
+            </div>
+            {extraCartons > 0 && (
+              <div className="text-xs font-semibold text-green-600">
+                Total: {totalCartons}
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
       <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
         <span className="text-xs text-slate-400">
@@ -126,7 +140,8 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
         </div>
       </div>
     </div>
-  )
+    )
+  }
 
   const GroupSection = ({ group, palettesInGroup }) => {
     const stats = calculateGroupStats(palettesInGroup)
@@ -154,11 +169,14 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
           <div className="flex items-center gap-4">
             {/* Stats du groupe */}
             <div className="text-right">
-              <div className="text-lg font-bold text-blue-500">
-                {stats.fillRate}%
+              <div className="text-lg font-bold text-green-600">
+                {stats.grandTotal}
               </div>
               <div className="text-xs text-slate-500">
-                {stats.totalPresent}/{stats.totalCapacity} cartons
+                {stats.totalPresent}/{stats.totalCapacity}
+                {stats.totalExtra > 0 && (
+                  <span className="text-amber-600"> +{stats.totalExtra}</span>
+                )}
               </div>
             </div>
 

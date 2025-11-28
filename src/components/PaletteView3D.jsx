@@ -13,8 +13,9 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
   const raycastRef = useRef(null)
   const animationRef = useRef(null)
 
-  // État local pour les cubes
+  // État local pour les cubes et cartons supplémentaires
   const [cubes, setCubes] = useState(palette.cubes)
+  const [extraCartons, setExtraCartons] = useState(palette.extraCartons || 0)
   const [hoveredCube, setHoveredCube] = useState(null)
 
   // Historique pour Undo
@@ -53,10 +54,16 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
 
   // Auto-save
   const handleSave = useCallback((p) => {
-    onUpdate({ ...p, cubes })
-  }, [cubes, onUpdate])
+    onUpdate({ ...p, cubes, extraCartons })
+  }, [cubes, extraCartons, onUpdate])
 
-  useAutoSave({ ...palette, cubes }, handleSave)
+  useAutoSave({ ...palette, cubes, extraCartons }, handleSave)
+
+  // Gestion des cartons supplémentaires
+  const handleExtraCartonsChange = useCallback((value) => {
+    setExtraCartons(value)
+    onUpdate({ ...palette, cubes, extraCartons: value })
+  }, [palette, cubes, onUpdate])
 
   // Initialisation Three.js
   useEffect(() => {
@@ -257,6 +264,7 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
   // Stats
   const capacity = palette.dimensions.length * palette.dimensions.width * palette.dimensions.height
   const present = cubes.length
+  const totalPresent = present + extraCartons
   const fillRate = ((present / capacity) * 100).toFixed(1)
 
   return (
@@ -266,8 +274,11 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         present={present}
         capacity={capacity}
         fillRate={fillRate}
+        extraCartons={extraCartons}
+        totalPresent={totalPresent}
         name={palette.name}
         onBack={onBack}
+        onExtraCartonsChange={handleExtraCartonsChange}
       />
 
       {/* Canvas 3D */}
