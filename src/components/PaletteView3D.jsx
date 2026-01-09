@@ -83,18 +83,15 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
     needsRenderRef.current = true
   }, [])
 
-  // Initialisation Three.js
+  // Initialisation Three.js (une seule fois par palette)
   useEffect(() => {
     if (!containerRef.current) return
 
     const container = containerRef.current
-    const { scene, camera, renderer } = createScene(container, palette.dimensions, {
-      performanceMode
-    })
+    const { scene, camera, renderer } = createScene(container, palette.dimensions)
 
     sceneRef.current = { scene, camera, renderer }
     cubeManagerRef.current = new CubeManager(scene, palette.dimensions, {
-      performanceMode,
       onNeedsRender: requestRender
     })
     raycastRef.current = new RaycastManager(camera, cubeManagerRef.current)
@@ -126,7 +123,7 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
       renderer.dispose()
       container.removeChild(renderer.domElement)
     }
-  }, [palette.dimensions, performanceMode, requestRender])
+  }, [palette.dimensions, requestRender])
 
   // Mettre à jour les cubes quand l'état change
   useEffect(() => {
@@ -134,6 +131,15 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
       cubeManagerRef.current.updateCubes(cubes)
     }
   }, [cubes])
+
+  // Gérer le changement de mode performance (sans recréer la scène)
+  useEffect(() => {
+    if (sceneRef.current && cubeManagerRef.current) {
+      setRendererPerformanceMode(sceneRef.current.renderer, performanceMode)
+      cubeManagerRef.current.setPerformanceMode(performanceMode)
+      needsRenderRef.current = true
+    }
+  }, [performanceMode])
 
   // Gérer le changement de mode performance
   const handlePerformanceModeChange = useCallback((enabled) => {

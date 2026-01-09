@@ -158,6 +158,8 @@ export class CubeManager {
     if (this.instancedMesh.instanceColor) {
       this.instancedMesh.instanceColor.needsUpdate = true
     }
+    // Recalculer le bounding sphere pour le raycasting
+    this.instancedMesh.computeBoundingSphere()
 
     // Mettre à jour les edges
     this.edgesGeometry.setAttribute(
