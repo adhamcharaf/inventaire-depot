@@ -75,56 +75,55 @@ export default function PaletteForm({ onCreate, onBack }) {
       </header>
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-auto">
-        {/* Référence sélectionnée ou recherche */}
-        {references.length > 0 && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-600 mb-2">
-              Référence article
-            </label>
+        {/* Référence sélectionnée ou recherche (obligatoire) */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-600 mb-2">
+            Référence article <span className="text-red-500">*</span>
+          </label>
 
-            {reference ? (
-              // Afficher la référence sélectionnée
-              <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
-                <span className="flex-1 font-medium text-blue-700">{reference}</span>
-                <button
-                  type="button"
-                  onClick={clearReference}
-                  className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
-                >
-                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              // Barre de recherche
-              <div className="relative" ref={dropdownRef}>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tapez pour rechercher..."
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                />
-                {showDropdown && (
-                  <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-                    {filteredRefs.map((ref, idx) => (
-                      <li key={idx}>
-                        <button
-                          type="button"
-                          onClick={() => selectReference(ref)}
-                          className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
-                        >
-                          {ref}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+          {reference ? (
+            // Afficher la référence sélectionnée
+            <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <span className="flex-1 font-medium text-blue-700">{reference}</span>
+              <button
+                type="button"
+                onClick={clearReference}
+                className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            // Barre de recherche
+            <div className="relative" ref={dropdownRef}>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tapez pour rechercher..."
+                className="w-full px-4 py-3 border border-amber-300 bg-amber-50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              />
+              {showDropdown && (
+                <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+                  {filteredRefs.map((ref, idx) => (
+                    <li key={idx}>
+                      <button
+                        type="button"
+                        onClick={() => selectReference(ref)}
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      >
+                        {ref}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-xs text-amber-600 mt-1">Sélectionnez une référence pour continuer</p>
+            </div>
+          )}
+        </div>
 
         {/* Nom optionnel */}
         <div className="mb-6">
@@ -177,7 +176,12 @@ export default function PaletteForm({ onCreate, onBack }) {
 
           <button
             type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition-colors"
+            disabled={!reference}
+            className={`w-full font-semibold py-4 px-6 rounded-xl shadow-lg transition-colors ${
+              reference
+                ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
           >
             Créer la palette
           </button>
