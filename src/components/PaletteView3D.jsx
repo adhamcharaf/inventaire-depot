@@ -171,6 +171,10 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
     camera.position.y = centerY + distance * Math.cos(phi)
     camera.position.z = centerZ + distance * Math.sin(phi) * Math.sin(theta)
 
+    // Ajuster le near clipping plane en fonction du zoom pour éviter la transparence
+    camera.near = Math.max(0.01, distance * 0.01)
+    camera.updateProjectionMatrix()
+
     camera.lookAt(centerX, centerY, centerZ)
     needsRenderRef.current = true
   }, [palette.dimensions])
