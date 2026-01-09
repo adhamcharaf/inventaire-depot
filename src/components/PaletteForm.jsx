@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { PALETTE_CONFIG } from '../lib/config'
-import { getAllReferences, createGroup } from '../db/indexeddb'
+import { getAllReferences } from '../db/indexeddb'
 
-export default function PaletteForm({ groups, onCreate, onBack, onGroupCreated }) {
+export default function PaletteForm({ onCreate, onBack }) {
   const [length, setLength] = useState(PALETTE_CONFIG.length.default)
   const [width, setWidth] = useState(PALETTE_CONFIG.width.default)
   const [height, setHeight] = useState(PALETTE_CONFIG.height.default)
   const [name, setName] = useState('')
-  const [groupId, setGroupId] = useState('')
+  const [reference, setReference] = useState(null)
 
   // Autocomplete
   const [references, setReferences] = useState([])
@@ -53,28 +53,20 @@ export default function PaletteForm({ groups, onCreate, onBack, onGroupCreated }
   }, [])
 
   // Sélectionner une référence
-  async function selectReference(ref) {
+  function selectReference(ref) {
     setSearch('')
-    setName(ref)
+    setReference(ref)
     setShowDropdown(false)
+  }
 
-    // Chercher si un groupe avec ce nom existe
-    const existingGroup = groups.find(g => g.name === ref)
-    if (existingGroup) {
-      setGroupId(existingGroup.id)
-    } else {
-      // Créer le groupe
-      const newGroup = await createGroup(ref)
-      setGroupId(newGroup.id)
-      if (onGroupCreated) {
-        onGroupCreated(newGroup)
-      }
-    }
+  // Effacer la référence sélectionnée
+  function clearReference() {
+    setReference(null)
   }
 
   function handleSubmit(e) {
     e.preventDefault()
-    onCreate({ length, width, height }, name, groupId || null)
+    onCreate({ length, width, height }, name, reference)
   }
 
   return (
@@ -93,33 +85,53 @@ export default function PaletteForm({ groups, onCreate, onBack, onGroupCreated }
       </header>
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-auto">
-        {/* Recherche de référence */}
+        {/* Référence sélectionnée ou recherche */}
         {references.length > 0 && (
-          <div className="mb-4 relative" ref={dropdownRef}>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-slate-600 mb-2">
-              Rechercher une référence
+              Référence article
             </label>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tapez pour rechercher..."
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-            />
-            {showDropdown && (
-              <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-                {filteredRefs.map((ref, idx) => (
-                  <li key={idx}>
-                    <button
-                      type="button"
-                      onClick={() => selectReference(ref)}
-                      className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
-                    >
-                      {ref}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+
+            {reference ? (
+              // Afficher la référence sélectionnée
+              <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <span className="flex-1 font-medium text-blue-700">{reference}</span>
+                <button
+                  type="button"
+                  onClick={clearReference}
+                  className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              // Barre de recherche
+              <div className="relative" ref={dropdownRef}>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Tapez pour rechercher..."
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+                {showDropdown && (
+                  <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+                    {filteredRefs.map((ref, idx) => (
+                      <li key={idx}>
+                        <button
+                          type="button"
+                          onClick={() => selectReference(ref)}
+                          className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                        >
+                          {ref}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -127,35 +139,16 @@ export default function PaletteForm({ groups, onCreate, onBack, onGroupCreated }
         {/* Nom optionnel */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-slate-600 mb-2">
-            Nom {references.length > 0 ? '(ou sélectionnez ci-dessus)' : '(optionnel)'}
+            Nom (optionnel)
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Palette Zone A"
+            placeholder="Par défaut: date et heure"
             className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
           />
         </div>
-
-        {/* Sélection du groupe */}
-        {groups.length > 0 && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-600 mb-2">
-              Groupe (optionnel)
-            </label>
-            <select
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
-            >
-              <option value="">Sans groupe</option>
-              {groups.map(group => (
-                <option key={group.id} value={group.id}>{group.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Sliders dimensions */}
         <div className="space-y-6 flex-1">

@@ -1,8 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getAllReferences } from '../db/indexeddb'
 
-export default function PaletteList({ palettes, groups, onResume, onDelete, onChangePaletteGroup }) {
+export default function PaletteList({ palettes, onResume, onDelete, onChangeReference }) {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
+  const [allReferences, setAllReferences] = useState([])
+
+  // Charger toutes les références importées
+  useEffect(() => {
+    async function load() {
+      const refs = await getAllReferences()
+      setAllReferences(refs)
+    }
+    load()
+  }, [])
 
   function formatDate(timestamp) {
     const date = new Date(timestamp)
@@ -30,10 +41,10 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
     }
   }
 
-  function toggleGroup(groupId) {
+  function toggleGroup(reference) {
     setExpandedGroups(prev => ({
       ...prev,
-      [groupId]: !prev[groupId]
+      [reference]: !prev[reference]
     }))
   }
 
@@ -46,25 +57,28 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
     return { totalPresent, totalExtra, totalCapacity, grandTotal, fillRate }
   }
 
-  // Grouper les palettes par groupe
+  // Grouper les palettes par référence
   const groupedPalettes = {}
   const ungroupedPalettes = []
 
   palettes.forEach(palette => {
-    if (palette.groupId) {
-      if (!groupedPalettes[palette.groupId]) {
-        groupedPalettes[palette.groupId] = []
+    if (palette.reference) {
+      if (!groupedPalettes[palette.reference]) {
+        groupedPalettes[palette.reference] = []
       }
-      groupedPalettes[palette.groupId].push(palette)
+      groupedPalettes[palette.reference].push(palette)
     } else {
       ungroupedPalettes.push(palette)
     }
   })
 
-  // Initialiser expandedGroups pour les nouveaux groupes
-  groups.forEach(group => {
-    if (expandedGroups[group.id] === undefined) {
-      expandedGroups[group.id] = true
+  // Extraire les références uniques utilisées
+  const usedReferences = Object.keys(groupedPalettes).sort()
+
+  // Initialiser expandedGroups pour les nouvelles références
+  usedReferences.forEach(ref => {
+    if (expandedGroups[ref] === undefined) {
+      expandedGroups[ref] = true
     }
   })
 
@@ -109,20 +123,20 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
         </span>
 
         <div className="flex items-center gap-2">
-          {/* Sélecteur de groupe */}
-          {groups.length > 0 && (
+          {/* Sélecteur de référence */}
+          {allReferences.length > 0 && (
             <select
-              value={palette.groupId || ''}
+              value={palette.reference || ''}
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => {
                 e.stopPropagation()
-                onChangePaletteGroup(palette.id, e.target.value || null)
+                onChangeReference(palette.id, e.target.value || null)
               }}
-              className="text-xs px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-600"
+              className="text-xs px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 max-w-[120px]"
             >
-              <option value="">Sans groupe</option>
-              {groups.map(group => (
-                <option key={group.id} value={group.id}>{group.name}</option>
+              <option value="">Sans réf.</option>
+              {allReferences.map(ref => (
+                <option key={ref} value={ref}>{ref}</option>
               ))}
             </select>
           )}
@@ -143,25 +157,25 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
     )
   }
 
-  const GroupSection = ({ group, palettesInGroup }) => {
+  const ReferenceSection = ({ reference, palettesInGroup }) => {
     const stats = calculateGroupStats(palettesInGroup)
-    const isExpanded = expandedGroups[group.id] !== false
+    const isExpanded = expandedGroups[reference] !== false
 
     return (
       <div className="mb-4">
-        {/* En-tête du groupe */}
+        {/* En-tête de la référence */}
         <button
-          onClick={() => toggleGroup(group.id)}
+          onClick={() => toggleGroup(reference)}
           className="w-full flex items-center justify-between bg-blue-50 rounded-xl p-4 mb-2"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
             </div>
             <div className="text-left">
-              <h3 className="font-bold text-slate-900">{group.name}</h3>
+              <h3 className="font-bold text-slate-900">{reference}</h3>
               <p className="text-xs text-slate-500">{palettesInGroup.length} palette{palettesInGroup.length > 1 ? 's' : ''}</p>
             </div>
           </div>
@@ -192,7 +206,7 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
           </div>
         </button>
 
-        {/* Palettes du groupe */}
+        {/* Palettes de cette référence */}
         {isExpanded && (
           <div className="space-y-3 pl-4">
             {palettesInGroup.map(palette => (
@@ -206,20 +220,20 @@ export default function PaletteList({ palettes, groups, onResume, onDelete, onCh
 
   return (
     <div className="space-y-3">
-      {/* Groupes avec leurs palettes */}
-      {groups.map(group => {
-        const palettesInGroup = groupedPalettes[group.id] || []
+      {/* Références avec leurs palettes */}
+      {usedReferences.map(reference => {
+        const palettesInGroup = groupedPalettes[reference] || []
         if (palettesInGroup.length === 0) return null
         return (
-          <GroupSection key={group.id} group={group} palettesInGroup={palettesInGroup} />
+          <ReferenceSection key={reference} reference={reference} palettesInGroup={palettesInGroup} />
         )
       })}
 
-      {/* Palettes sans groupe */}
+      {/* Palettes sans référence */}
       {ungroupedPalettes.length > 0 && (
         <div>
-          {groups.length > 0 && Object.keys(groupedPalettes).some(id => groupedPalettes[id].length > 0) && (
-            <h3 className="text-sm font-medium text-slate-400 mb-3">Sans groupe</h3>
+          {usedReferences.length > 0 && (
+            <h3 className="text-sm font-medium text-slate-400 mb-3">Sans référence</h3>
           )}
           <div className="space-y-3">
             {ungroupedPalettes.map(palette => (

@@ -1,7 +1,7 @@
 const DB_NAME = 'inventaire-palettes'
-const DB_VERSION = 3
+const DB_VERSION = 4
 const STORE_NAME = 'palettes'
-const GROUPS_STORE = 'groups'
+const GROUPS_STORE = 'groups' // Gardé pour migration
 const REFERENCES_STORE = 'references'
 
 let db = null
@@ -23,30 +23,68 @@ function openDB() {
 
     request.onupgradeneeded = (event) => {
       const database = event.target.result
+      const tx = event.target.transaction
 
       // Store des palettes
       if (!database.objectStoreNames.contains(STORE_NAME)) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' })
         store.createIndex('updatedAt', 'updatedAt', { unique: false })
-        store.createIndex('groupId', 'groupId', { unique: false })
-      } else if (event.oldVersion < 2) {
-        // Migration: ajouter l'index groupId aux palettes existantes
-        const tx = event.target.transaction
-        const store = tx.objectStore(STORE_NAME)
-        if (!store.indexNames.contains('groupId')) {
-          store.createIndex('groupId', 'groupId', { unique: false })
-        }
+        store.createIndex('reference', 'reference', { unique: false })
       }
 
-      // Store des groupes
+      // Store des groupes (pour migration, sera vidé)
       if (!database.objectStoreNames.contains(GROUPS_STORE)) {
-        const groupStore = database.createObjectStore(GROUPS_STORE, { keyPath: 'id' })
-        groupStore.createIndex('createdAt', 'createdAt', { unique: false })
+        database.createObjectStore(GROUPS_STORE, { keyPath: 'id' })
       }
 
-      // Store des références (v3)
+      // Store des références
       if (!database.objectStoreNames.contains(REFERENCES_STORE)) {
         database.createObjectStore(REFERENCES_STORE, { keyPath: 'id' })
+      }
+
+      // Migration v3 → v4: groupId → reference
+      if (event.oldVersion < 4 && event.oldVersion >= 2) {
+        const paletteStore = tx.objectStore(STORE_NAME)
+        const groupStore = tx.objectStore(GROUPS_STORE)
+
+        // Créer l'index reference si pas existant
+        if (!paletteStore.indexNames.contains('reference')) {
+          paletteStore.createIndex('reference', 'reference', { unique: false })
+        }
+
+        // Charger tous les groupes pour la migration
+        const groupsMap = new Map()
+        const groupRequest = groupStore.getAll()
+
+        groupRequest.onsuccess = () => {
+          const groups = groupRequest.result || []
+          groups.forEach(g => groupsMap.set(g.id, g.name))
+
+          // Migrer les palettes
+          const cursorRequest = paletteStore.openCursor()
+          cursorRequest.onsuccess = (e) => {
+            const cursor = e.target.result
+            if (cursor) {
+              const palette = cursor.value
+              if (palette.groupId && groupsMap.has(palette.groupId)) {
+                palette.reference = groupsMap.get(palette.groupId)
+              } else {
+                palette.reference = null
+              }
+              delete palette.groupId
+              cursor.update(palette)
+              cursor.continue()
+            } else {
+              // Migration terminée, vider le store des groupes
+              groupStore.clear()
+            }
+          }
+        }
+
+        // Supprimer l'ancien index groupId si existe
+        if (paletteStore.indexNames.contains('groupId')) {
+          paletteStore.deleteIndex('groupId')
+        }
       }
     }
   })
@@ -81,19 +119,19 @@ function calculateStats(cubes, dimensions, extraCartons = 0) {
   }
 }
 
-export async function createPalette(dimensions, name = '', groupId = null) {
+export async function createPalette(dimensions, name = '', reference = null) {
   const database = await openDB()
   const cubes = generateFullCubes(dimensions)
   const now = Date.now()
 
   const palette = {
     id: generateId(),
-    name: name || `Palette ${new Date().toLocaleDateString('fr-FR')}`,
+    name: name || `Palette ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
     dimensions,
     cubes,
     extraCartons: 0,
     stats: calculateStats(cubes, dimensions, 0),
-    groupId,
+    reference,
     createdAt: now,
     updatedAt: now
   }
@@ -171,94 +209,11 @@ export async function deletePalette(id) {
   })
 }
 
-// ==================== GROUPES ====================
-
-export async function createGroup(name) {
-  const database = await openDB()
-  const now = Date.now()
-
-  const group = {
-    id: generateId(),
-    name: name || `Groupe ${new Date().toLocaleDateString('fr-FR')}`,
-    createdAt: now
-  }
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(GROUPS_STORE, 'readwrite')
-    const store = tx.objectStore(GROUPS_STORE)
-    const request = store.add(group)
-
-    request.onsuccess = () => resolve(group)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-export async function getAllGroups() {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(GROUPS_STORE, 'readonly')
-    const store = tx.objectStore(GROUPS_STORE)
-    const request = store.getAll()
-
-    request.onsuccess = () => {
-      const groups = request.result.sort((a, b) => a.createdAt - b.createdAt)
-      resolve(groups)
-    }
-    request.onerror = () => reject(request.error)
-  })
-}
-
-export async function updateGroup(group) {
-  const database = await openDB()
-
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(GROUPS_STORE, 'readwrite')
-    const store = tx.objectStore(GROUPS_STORE)
-    const request = store.put(group)
-
-    request.onsuccess = () => resolve(group)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-export async function deleteGroup(id) {
-  const database = await openDB()
-
-  // Supprimer le groupe et retirer le groupId des palettes associées
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction([GROUPS_STORE, STORE_NAME], 'readwrite')
-
-    // Supprimer le groupe
-    const groupStore = tx.objectStore(GROUPS_STORE)
-    groupStore.delete(id)
-
-    // Retirer le groupId des palettes associées
-    const paletteStore = tx.objectStore(STORE_NAME)
-    const index = paletteStore.index('groupId')
-    const request = index.openCursor(IDBKeyRange.only(id))
-
-    request.onsuccess = (event) => {
-      const cursor = event.target.result
-      if (cursor) {
-        const palette = cursor.value
-        palette.groupId = null
-        paletteStore.put(palette)
-        cursor.continue()
-      }
-    }
-
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-}
-
-export async function updatePaletteGroup(paletteId, groupId) {
-  const database = await openDB()
+export async function updatePaletteReference(paletteId, reference) {
   const palette = await getPalette(paletteId)
 
   if (palette) {
-    palette.groupId = groupId
+    palette.reference = reference
     return updatePalette(palette)
   }
   return null

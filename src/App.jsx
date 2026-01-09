@@ -8,16 +8,12 @@ import {
   getPalette,
   updatePalette,
   deletePalette,
-  getAllGroups,
-  createGroup,
-  deleteGroup,
-  updatePaletteGroup
+  updatePaletteReference
 } from './db/indexeddb'
 
 export default function App() {
   const [screen, setScreen] = useState('home')
   const [palettes, setPalettes] = useState([])
-  const [groups, setGroups] = useState([])
   const [currentPalette, setCurrentPalette] = useState(null)
 
   useEffect(() => {
@@ -25,16 +21,12 @@ export default function App() {
   }, [])
 
   async function loadData() {
-    const [palettesData, groupsData] = await Promise.all([
-      getAllPalettes(),
-      getAllGroups()
-    ])
+    const palettesData = await getAllPalettes()
     setPalettes(palettesData)
-    setGroups(groupsData)
   }
 
-  async function handleCreate(dimensions, name, groupId) {
-    const palette = await createPalette(dimensions, name, groupId)
+  async function handleCreate(dimensions, name, reference) {
+    const palette = await createPalette(dimensions, name, reference)
     await loadData()
     setCurrentPalette(palette)
     setScreen('view')
@@ -58,18 +50,8 @@ export default function App() {
     setCurrentPalette(updated)
   }
 
-  async function handleCreateGroup(name) {
-    await createGroup(name)
-    await loadData()
-  }
-
-  async function handleDeleteGroup(id) {
-    await deleteGroup(id)
-    await loadData()
-  }
-
-  async function handleChangePaletteGroup(paletteId, groupId) {
-    await updatePaletteGroup(paletteId, groupId)
+  async function handleChangeReference(paletteId, reference) {
+    await updatePaletteReference(paletteId, reference)
     await loadData()
   }
 
@@ -84,21 +66,16 @@ export default function App() {
       {screen === 'home' && (
         <Home
           palettes={palettes}
-          groups={groups}
           onNew={() => setScreen('form')}
           onResume={handleResume}
           onDelete={handleDelete}
-          onCreateGroup={handleCreateGroup}
-          onDeleteGroup={handleDeleteGroup}
-          onChangePaletteGroup={handleChangePaletteGroup}
+          onChangeReference={handleChangeReference}
         />
       )}
       {screen === 'form' && (
         <PaletteForm
-          groups={groups}
           onCreate={handleCreate}
           onBack={() => setScreen('home')}
-          onGroupCreated={(newGroup) => setGroups(prev => [...prev, newGroup])}
         />
       )}
       {screen === 'view' && currentPalette && (
