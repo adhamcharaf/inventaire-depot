@@ -1,14 +1,76 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { PALETTE_CONFIG } from '../lib/config'
+import { getAllReferences, createGroup } from '../db/indexeddb'
 
-export default function PaletteForm({ groups, onCreate, onBack }) {
+export default function PaletteForm({ groups, onCreate, onBack, onGroupCreated }) {
   const [length, setLength] = useState(PALETTE_CONFIG.length.default)
   const [width, setWidth] = useState(PALETTE_CONFIG.width.default)
   const [height, setHeight] = useState(PALETTE_CONFIG.height.default)
   const [name, setName] = useState('')
   const [groupId, setGroupId] = useState('')
 
+  // Autocomplete
+  const [references, setReferences] = useState([])
+  const [search, setSearch] = useState('')
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [filteredRefs, setFilteredRefs] = useState([])
+  const dropdownRef = useRef(null)
+
   const capacity = length * width * height
+
+  // Charger les références au mount
+  useEffect(() => {
+    async function load() {
+      const refs = await getAllReferences()
+      setReferences(refs)
+    }
+    load()
+  }, [])
+
+  // Filtrer les références quand on tape
+  useEffect(() => {
+    if (search.length > 0) {
+      const filtered = references
+        .filter(ref => ref.toLowerCase().includes(search.toLowerCase()))
+        .slice(0, 10) // Limiter à 10 résultats
+      setFilteredRefs(filtered)
+      setShowDropdown(filtered.length > 0)
+    } else {
+      setFilteredRefs([])
+      setShowDropdown(false)
+    }
+  }, [search, references])
+
+  // Fermer le dropdown si clic à l'extérieur
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Sélectionner une référence
+  async function selectReference(ref) {
+    setSearch('')
+    setName(ref)
+    setShowDropdown(false)
+
+    // Chercher si un groupe avec ce nom existe
+    const existingGroup = groups.find(g => g.name === ref)
+    if (existingGroup) {
+      setGroupId(existingGroup.id)
+    } else {
+      // Créer le groupe
+      const newGroup = await createGroup(ref)
+      setGroupId(newGroup.id)
+      if (onGroupCreated) {
+        onGroupCreated(newGroup)
+      }
+    }
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -31,10 +93,41 @@ export default function PaletteForm({ groups, onCreate, onBack }) {
       </header>
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-auto">
+        {/* Recherche de référence */}
+        {references.length > 0 && (
+          <div className="mb-4 relative" ref={dropdownRef}>
+            <label className="block text-sm font-medium text-slate-600 mb-2">
+              Rechercher une référence
+            </label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tapez pour rechercher..."
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            />
+            {showDropdown && (
+              <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+                {filteredRefs.map((ref, idx) => (
+                  <li key={idx}>
+                    <button
+                      type="button"
+                      onClick={() => selectReference(ref)}
+                      className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                    >
+                      {ref}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* Nom optionnel */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-slate-600 mb-2">
-            Nom (optionnel)
+            Nom {references.length > 0 ? '(ou sélectionnez ci-dessus)' : '(optionnel)'}
           </label>
           <input
             type="text"

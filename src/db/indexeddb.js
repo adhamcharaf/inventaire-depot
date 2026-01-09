@@ -1,7 +1,8 @@
 const DB_NAME = 'inventaire-palettes'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const STORE_NAME = 'palettes'
 const GROUPS_STORE = 'groups'
+const REFERENCES_STORE = 'references'
 
 let db = null
 
@@ -41,6 +42,11 @@ function openDB() {
       if (!database.objectStoreNames.contains(GROUPS_STORE)) {
         const groupStore = database.createObjectStore(GROUPS_STORE, { keyPath: 'id' })
         groupStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+
+      // Store des références (v3)
+      if (!database.objectStoreNames.contains(REFERENCES_STORE)) {
+        database.createObjectStore(REFERENCES_STORE, { keyPath: 'id' })
       }
     }
   })
@@ -256,4 +262,58 @@ export async function updatePaletteGroup(paletteId, groupId) {
     return updatePalette(palette)
   }
   return null
+}
+
+// ==================== RÉFÉRENCES ====================
+
+export async function importReferences(referencesArray) {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(REFERENCES_STORE, 'readwrite')
+    const store = tx.objectStore(REFERENCES_STORE)
+
+    // Vider le store avant d'importer
+    store.clear()
+
+    // Stocker comme un seul objet avec id fixe
+    const data = {
+      id: 'main',
+      references: referencesArray,
+      importedAt: Date.now()
+    }
+    store.put(data)
+
+    tx.oncomplete = () => resolve(referencesArray.length)
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+export async function getAllReferences() {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(REFERENCES_STORE, 'readonly')
+    const store = tx.objectStore(REFERENCES_STORE)
+    const request = store.get('main')
+
+    request.onsuccess = () => {
+      const data = request.result
+      resolve(data ? data.references : [])
+    }
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function clearReferences() {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(REFERENCES_STORE, 'readwrite')
+    const store = tx.objectStore(REFERENCES_STORE)
+    const request = store.clear()
+
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
 }

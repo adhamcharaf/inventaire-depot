@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import PaletteList from './PaletteList'
 import GroupManager from './GroupManager'
+import ReferenceImport from './ReferenceImport'
 
 export default function Home({
   palettes,
@@ -13,6 +14,7 @@ export default function Home({
   onChangePaletteGroup
 }) {
   const [showGroupManager, setShowGroupManager] = useState(false)
+  const [showReferenceImport, setShowReferenceImport] = useState(false)
 
   return (
     <div className="h-full flex flex-col safe-top safe-bottom">
@@ -23,15 +25,26 @@ export default function Home({
             <h1 className="text-2xl font-bold">Inventaire Palettes</h1>
             <p className="text-blue-100 text-sm mt-1">Comptez vos articles en 3D</p>
           </div>
-          <button
-            onClick={() => setShowGroupManager(true)}
-            className="p-2 hover:bg-blue-600 rounded-lg transition-colors"
-            title="Gérer les groupes"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-            </svg>
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowReferenceImport(true)}
+              className="p-2 hover:bg-blue-600 rounded-lg transition-colors"
+              title="Gérer les références"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowGroupManager(true)}
+              className="p-2 hover:bg-blue-600 rounded-lg transition-colors"
+              title="Gérer les groupes"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -76,6 +89,13 @@ export default function Home({
           onCreateGroup={onCreateGroup}
           onDeleteGroup={onDeleteGroup}
           onClose={() => setShowGroupManager(false)}
+        />
+      )}
+
+      {/* Modal d'import des références */}
+      {showReferenceImport && (
+        <ReferenceImport
+          onClose={() => setShowReferenceImport(false)}
         />
       )}
     </div>

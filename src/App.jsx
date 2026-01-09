@@ -98,6 +98,7 @@ export default function App() {
           groups={groups}
           onCreate={handleCreate}
           onBack={() => setScreen('home')}
+          onGroupCreated={(newGroup) => setGroups(prev => [...prev, newGroup])}
         />
       )}
       {screen === 'view' && currentPalette && (
