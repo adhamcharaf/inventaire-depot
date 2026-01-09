@@ -1,19 +1,9 @@
-import { useState, useEffect } from 'react'
-import { getAllReferences } from '../db/indexeddb'
+import { useState } from 'react'
+import references from '../data/references'
 
 export default function PaletteList({ palettes, onResume, onDelete, onChangeReference }) {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
-  const [allReferences, setAllReferences] = useState([])
-
-  // Charger toutes les références importées
-  useEffect(() => {
-    async function load() {
-      const refs = await getAllReferences()
-      setAllReferences(refs)
-    }
-    load()
-  }, [])
 
   function formatDate(timestamp) {
     const date = new Date(timestamp)
@@ -124,7 +114,7 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
 
         <div className="flex items-center gap-2">
           {/* Sélecteur de référence */}
-          {allReferences.length > 0 && (
+          {references.length > 0 && (
             <select
               value={palette.reference || ''}
               onClick={(e) => e.stopPropagation()}
@@ -135,7 +125,7 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
               className="text-xs px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 max-w-[120px]"
             >
               <option value="">Sans réf.</option>
-              {allReferences.map(ref => (
+              {references.map(ref => (
                 <option key={ref} value={ref}>{ref}</option>
               ))}
             </select>

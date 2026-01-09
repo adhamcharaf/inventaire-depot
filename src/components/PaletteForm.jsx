@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { PALETTE_CONFIG } from '../lib/config'
-import { getAllReferences } from '../db/indexeddb'
+import references from '../data/references'
 
 export default function PaletteForm({ onCreate, onBack }) {
   const [length, setLength] = useState(PALETTE_CONFIG.length.default)
@@ -10,22 +10,12 @@ export default function PaletteForm({ onCreate, onBack }) {
   const [reference, setReference] = useState(null)
 
   // Autocomplete
-  const [references, setReferences] = useState([])
   const [search, setSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [filteredRefs, setFilteredRefs] = useState([])
   const dropdownRef = useRef(null)
 
   const capacity = length * width * height
-
-  // Charger les références au mount
-  useEffect(() => {
-    async function load() {
-      const refs = await getAllReferences()
-      setReferences(refs)
-    }
-    load()
-  }, [])
 
   // Filtrer les références quand on tape
   useEffect(() => {
@@ -39,7 +29,7 @@ export default function PaletteForm({ onCreate, onBack }) {
       setFilteredRefs([])
       setShowDropdown(false)
     }
-  }, [search, references])
+  }, [search])
 
   // Fermer le dropdown si clic à l'extérieur
   useEffect(() => {
