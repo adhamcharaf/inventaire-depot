@@ -1,10 +1,11 @@
 import * as THREE from 'three'
-import { CUBE_COLORS } from './config'
 
 /**
  * Créer et configurer la scène Three.js
  */
-export function createScene(container, dimensions) {
+export function createScene(container, dimensions, options = {}) {
+  const { performanceMode = false } = options
+
   // Scène
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0xF8FAFC)
@@ -19,19 +20,28 @@ export function createScene(container, dimensions) {
   camera.position.set(distance, distance * 0.8, distance)
   camera.lookAt(dimensions.length / 2, dimensions.height / 2, dimensions.width / 2)
 
-  // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true })
+  // Renderer - adapté au mode performance
+  const renderer = new THREE.WebGLRenderer({
+    antialias: !performanceMode,
+    powerPreference: performanceMode ? 'low-power' : 'high-performance'
+  })
   renderer.setSize(container.clientWidth, container.clientHeight)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setPixelRatio(performanceMode ? 1 : Math.min(window.devicePixelRatio, 2))
   container.appendChild(renderer.domElement)
 
-  // Lumières
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
-  scene.add(ambientLight)
+  // Lumières (seulement si pas en mode performance)
+  if (!performanceMode) {
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
+    scene.add(ambientLight)
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-  directionalLight.position.set(10, 20, 10)
-  scene.add(directionalLight)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+    directionalLight.position.set(10, 20, 10)
+    scene.add(directionalLight)
+  } else {
+    // En mode performance, juste une lumière ambiante forte
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0)
+    scene.add(ambientLight)
+  }
 
   // Grille au sol
   const gridHelper = new THREE.GridHelper(
@@ -73,59 +83,6 @@ export function createScene(container, dimensions) {
 }
 
 /**
- * Créer un cube avec contours et couleur selon le niveau
- */
-export function createCube(x, y, z, isPresent = true, maxHeight = 1) {
-  const group = new THREE.Group()
-
-  const size = 0.9 // Légèrement plus petit pour espacement
-  const geometry = new THREE.BoxGeometry(size, size, size)
-
-  // Calculer la couleur selon le niveau Z (dégradé foncé→clair)
-  const t = maxHeight > 1 ? z / (maxHeight - 1) : 0.5
-  const colorBottom = new THREE.Color(0x6B4E0A)  // Carton très foncé (marron)
-  const colorTop = new THREE.Color(0xF5E6C8)     // Carton très clair (beige)
-  const cubeColor = new THREE.Color().lerpColors(colorBottom, colorTop, t)
-
-  group.userData = { x, y, z, isPresent, originalColor: cubeColor.getHex() }
-
-  // Cube plein avec couleur selon niveau - OPAQUE
-  const material = new THREE.MeshLambertMaterial({
-    color: cubeColor
-  })
-  const mesh = new THREE.Mesh(geometry, material)
-  group.add(mesh)
-
-  // Contours
-  const edges = new THREE.EdgesGeometry(geometry)
-  const lineMaterial = new THREE.LineBasicMaterial({ color: CUBE_COLORS.edge })
-  const wireframe = new THREE.LineSegments(edges, lineMaterial)
-  group.add(wireframe)
-
-  // Position (y = hauteur dans Three.js)
-  group.position.set(x, z, y)
-
-  return group
-}
-
-/**
- * Mettre en surbrillance un cube
- */
-export function highlightCube(cubeGroup, highlight = true) {
-  if (!cubeGroup) return
-
-  const mesh = cubeGroup.children[0]
-  if (mesh && mesh.material) {
-    if (highlight) {
-      mesh.material.color.setHex(CUBE_COLORS.hover)
-    } else {
-      // Restaurer la couleur originale (selon le niveau)
-      mesh.material.color.setHex(cubeGroup.userData.originalColor)
-    }
-  }
-}
-
-/**
  * Resize handler
  */
 export function handleResize(container, camera, renderer) {
@@ -135,4 +92,11 @@ export function handleResize(container, camera, renderer) {
   camera.aspect = width / height
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
+}
+
+/**
+ * Mettre à jour le mode performance du renderer
+ */
+export function setRendererPerformanceMode(renderer, performanceMode) {
+  renderer.setPixelRatio(performanceMode ? 1 : Math.min(window.devicePixelRatio, 2))
 }

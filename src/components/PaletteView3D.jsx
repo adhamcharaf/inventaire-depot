@@ -1,10 +1,19 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { createScene, handleResize } from '../lib/three-scene'
+import { createScene, handleResize, setRendererPerformanceMode } from '../lib/three-scene'
 import { CubeManager, RaycastManager } from '../lib/cube-manager'
 import { removeCubeWithGravity, addCube, generateFullCubes, emptyAllCubes } from '../lib/gravity'
 import { useAutoSave } from '../hooks/useAutoSave'
 import StatsBar from './StatsBar'
 import Controls from './Controls'
+
+// Charger le mode performance depuis localStorage
+function loadPerformanceMode() {
+  try {
+    return localStorage.getItem('performanceMode') === 'true'
+  } catch {
+    return false
+  }
+}
 
 export default function PaletteView3D({ palette, onUpdate, onBack }) {
   const containerRef = useRef(null)
@@ -12,11 +21,15 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
   const cubeManagerRef = useRef(null)
   const raycastRef = useRef(null)
   const animationRef = useRef(null)
+  const needsRenderRef = useRef(true)
 
   // État local pour les cubes et cartons supplémentaires
   const [cubes, setCubes] = useState(palette.cubes)
   const [extraCartons, setExtraCartons] = useState(palette.extraCartons || 0)
   const [hoveredCube, setHoveredCube] = useState(null)
+
+  // Mode performance
+  const [performanceMode, setPerformanceMode] = useState(loadPerformanceMode)
 
   // Historique pour Undo
   const [history, setHistory] = useState([])
@@ -65,26 +78,45 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
     onUpdate({ ...palette, cubes, extraCartons: value })
   }, [palette, cubes, onUpdate])
 
+  // Callback pour demander un re-render
+  const requestRender = useCallback(() => {
+    needsRenderRef.current = true
+  }, [])
+
   // Initialisation Three.js
   useEffect(() => {
     if (!containerRef.current) return
 
     const container = containerRef.current
-    const { scene, camera, renderer } = createScene(container, palette.dimensions)
+    const { scene, camera, renderer } = createScene(container, palette.dimensions, {
+      performanceMode
+    })
 
     sceneRef.current = { scene, camera, renderer }
-    cubeManagerRef.current = new CubeManager(scene, palette.dimensions)
+    cubeManagerRef.current = new CubeManager(scene, palette.dimensions, {
+      performanceMode,
+      onNeedsRender: requestRender
+    })
     raycastRef.current = new RaycastManager(camera, cubeManagerRef.current)
 
-    // Boucle de rendu
+    // Boucle de rendu optimisée (render on demand)
     function animate() {
       animationRef.current = requestAnimationFrame(animate)
-      renderer.render(scene, camera)
+      if (needsRenderRef.current) {
+        renderer.render(scene, camera)
+        needsRenderRef.current = false
+      }
     }
     animate()
 
+    // Premier render
+    needsRenderRef.current = true
+
     // Resize
-    const onResize = () => handleResize(container, camera, renderer)
+    const onResize = () => {
+      handleResize(container, camera, renderer)
+      needsRenderRef.current = true
+    }
     window.addEventListener('resize', onResize)
 
     return () => {
@@ -94,7 +126,7 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
       renderer.dispose()
       container.removeChild(renderer.domElement)
     }
-  }, [palette.dimensions])
+  }, [palette.dimensions, performanceMode, requestRender])
 
   // Mettre à jour les cubes quand l'état change
   useEffect(() => {
@@ -102,6 +134,16 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
       cubeManagerRef.current.updateCubes(cubes)
     }
   }, [cubes])
+
+  // Gérer le changement de mode performance
+  const handlePerformanceModeChange = useCallback((enabled) => {
+    setPerformanceMode(enabled)
+    try {
+      localStorage.setItem('performanceMode', enabled ? 'true' : 'false')
+    } catch {
+      // localStorage non disponible
+    }
+  }, [])
 
   // Mettre à jour la position de la caméra
   const updateCameraPosition = useCallback(() => {
@@ -124,6 +166,7 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
     camera.position.z = centerZ + distance * Math.sin(phi) * Math.sin(theta)
 
     camera.lookAt(centerX, centerY, centerZ)
+    needsRenderRef.current = true
   }, [palette.dimensions])
 
   // Gestion du pointeur
@@ -156,12 +199,12 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
       const rect = containerRef.current.getBoundingClientRect()
       const cube = raycastRef.current?.findCubeAtPointer(e.clientX, e.clientY, rect)
 
-      if (hoveredCube?.group !== cube?.group) {
+      if (hoveredCube?.instanceId !== cube?.instanceId) {
         if (hoveredCube) {
-          cubeManagerRef.current?.unhighlight(hoveredCube.group)
+          cubeManagerRef.current?.unhighlight()
         }
         if (cube) {
-          cubeManagerRef.current?.highlight(cube.group)
+          cubeManagerRef.current?.highlight(cube.instanceId)
         }
         setHoveredCube(cube)
       }
@@ -291,7 +334,7 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         onPointerUp={handlePointerUp}
         onPointerLeave={() => {
           if (hoveredCube) {
-            cubeManagerRef.current?.unhighlight(hoveredCube.group)
+            cubeManagerRef.current?.unhighlight()
             setHoveredCube(null)
           }
         }}
@@ -308,6 +351,8 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         onViewChange={setView}
         onUndo={handleUndo}
         canUndo={history.length > 0}
+        performanceMode={performanceMode}
+        onPerformanceModeChange={handlePerformanceModeChange}
       />
     </div>
   )

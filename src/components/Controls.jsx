@@ -1,6 +1,15 @@
 import { useState } from 'react'
 
-export default function Controls({ onFill, onEmpty, onResetView, onViewChange, onUndo, canUndo }) {
+export default function Controls({
+  onFill,
+  onEmpty,
+  onResetView,
+  onViewChange,
+  onUndo,
+  canUndo,
+  performanceMode,
+  onPerformanceModeChange
+}) {
   const [confirmEmpty, setConfirmEmpty] = useState(false)
 
   function handleEmpty() {
@@ -23,24 +32,34 @@ export default function Controls({ onFill, onEmpty, onResetView, onViewChange, o
         <ViewButton label="Iso" onClick={() => onViewChange('iso')} active />
       </div>
 
-      {/* Reset + Undo */}
-      <div className="flex justify-center gap-3 mb-4">
+      {/* Reset + Undo + Performance */}
+      <div className="flex justify-center gap-2 mb-4 flex-wrap">
         <button
           onClick={onResetView}
-          className="px-4 h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-full flex items-center justify-center text-sm font-medium text-slate-600 transition-colors"
+          className="px-3 h-10 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-full flex items-center justify-center text-sm font-medium text-slate-600 transition-colors"
         >
           Reset vue
         </button>
         <button
           onClick={onUndo}
           disabled={!canUndo}
-          className={`px-4 h-11 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+          className={`px-3 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
             canUndo
               ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
               : 'bg-slate-100 text-slate-300'
           }`}
         >
-          ↶ Annuler
+          Annuler
+        </button>
+        <button
+          onClick={() => onPerformanceModeChange(!performanceMode)}
+          className={`px-3 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+            performanceMode
+              ? 'bg-green-100 text-green-700 hover:bg-green-200 active:bg-green-300'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300'
+          }`}
+        >
+          {performanceMode ? 'Perf ON' : 'Perf OFF'}
         </button>
       </div>
 
