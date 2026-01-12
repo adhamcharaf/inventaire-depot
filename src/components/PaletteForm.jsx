@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { PALETTE_CONFIG } from '../lib/config'
-import references from '../data/references'
+import defaultReferences from '../data/references'
+import { getCustomReferences, addCustomReference } from '../db/indexeddb'
 
 export default function PaletteForm({ onCreate, onBack }) {
   const [length, setLength] = useState(PALETTE_CONFIG.length.default)
@@ -13,23 +14,39 @@ export default function PaletteForm({ onCreate, onBack }) {
   const [search, setSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [filteredRefs, setFilteredRefs] = useState([])
+  const [allReferences, setAllReferences] = useState(defaultReferences)
   const dropdownRef = useRef(null)
 
   const capacity = length * width * height
 
+  // Charger les références personnalisées au démarrage
+  useEffect(() => {
+    async function loadCustomRefs() {
+      const customRefs = await getCustomReferences()
+      const combined = [...new Set([...defaultReferences, ...customRefs])].sort()
+      setAllReferences(combined)
+    }
+    loadCustomRefs()
+  }, [])
+
+  // Vérifier si la recherche correspond exactement à une référence existante
+  const exactMatch = search.length > 0 && allReferences.some(
+    ref => ref.toLowerCase() === search.toLowerCase()
+  )
+
   // Filtrer les références quand on tape
   useEffect(() => {
     if (search.length > 0) {
-      const filtered = references
+      const filtered = allReferences
         .filter(ref => ref.toLowerCase().includes(search.toLowerCase()))
         .slice(0, 10) // Limiter à 10 résultats
       setFilteredRefs(filtered)
-      setShowDropdown(filtered.length > 0)
+      setShowDropdown(true)
     } else {
       setFilteredRefs([])
       setShowDropdown(false)
     }
-  }, [search])
+  }, [search, allReferences])
 
   // Fermer le dropdown si clic à l'extérieur
   useEffect(() => {
@@ -47,6 +64,16 @@ export default function PaletteForm({ onCreate, onBack }) {
     setSearch('')
     setReference(ref)
     setShowDropdown(false)
+  }
+
+  // Créer une nouvelle référence
+  async function createNewReference() {
+    const trimmed = search.trim()
+    if (trimmed.length === 0) return
+
+    await addCustomReference(trimmed)
+    setAllReferences(prev => [...new Set([...prev, trimmed])].sort())
+    selectReference(trimmed)
   }
 
   // Effacer la référence sélectionnée
@@ -107,17 +134,39 @@ export default function PaletteForm({ onCreate, onBack }) {
               />
               {showDropdown && (
                 <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+                  {/* Option pour créer une nouvelle référence */}
+                  {search.trim().length > 0 && !exactMatch && (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={createNewReference}
+                        className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors border-b border-slate-100 flex items-center gap-2"
+                      >
+                        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span className="text-green-700">
+                          Créer "<span className="font-medium">{search.trim()}</span>"
+                        </span>
+                      </button>
+                    </li>
+                  )}
                   {filteredRefs.map((ref, idx) => (
                     <li key={idx}>
                       <button
                         type="button"
                         onClick={() => selectReference(ref)}
-                        className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors"
                       >
                         {ref}
                       </button>
                     </li>
                   ))}
+                  {filteredRefs.length === 0 && exactMatch && (
+                    <li className="px-4 py-3 text-slate-400 text-center">
+                      Aucun résultat
+                    </li>
+                  )}
                 </ul>
               )}
               <p className="text-xs text-amber-600 mt-1">Sélectionnez une référence pour continuer</p>

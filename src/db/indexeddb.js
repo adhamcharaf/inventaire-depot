@@ -1,7 +1,8 @@
 const DB_NAME = 'inventaire-palettes'
-const DB_VERSION = 4
+const DB_VERSION = 5
 const STORE_NAME = 'palettes'
 const GROUPS_STORE = 'groups' // Gardé pour migration
+const CUSTOM_REFS_STORE = 'custom_references'
 
 let db = null
 
@@ -34,6 +35,11 @@ function openDB() {
       // Store des groupes (pour migration, sera vidé)
       if (!database.objectStoreNames.contains(GROUPS_STORE)) {
         database.createObjectStore(GROUPS_STORE, { keyPath: 'id' })
+      }
+
+      // Store des références personnalisées
+      if (!database.objectStoreNames.contains(CUSTOM_REFS_STORE)) {
+        database.createObjectStore(CUSTOM_REFS_STORE, { keyPath: 'name' })
       }
 
       // Migration v3 → v4: groupId → reference
@@ -211,4 +217,34 @@ export async function updatePaletteReference(paletteId, reference) {
     return updatePalette(palette)
   }
   return null
+}
+
+// Références personnalisées
+export async function addCustomReference(name) {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(CUSTOM_REFS_STORE, 'readwrite')
+    const store = tx.objectStore(CUSTOM_REFS_STORE)
+    const request = store.put({ name, createdAt: Date.now() })
+
+    request.onsuccess = () => resolve(name)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getCustomReferences() {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(CUSTOM_REFS_STORE, 'readonly')
+    const store = tx.objectStore(CUSTOM_REFS_STORE)
+    const request = store.getAll()
+
+    request.onsuccess = () => {
+      const refs = request.result.map(r => r.name).sort()
+      resolve(refs)
+    }
+    request.onerror = () => reject(request.error)
+  })
 }
