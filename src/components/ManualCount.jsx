@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import references from '../data/references'
 
 // Évalue une expression mathématique simple (+ - × *)
@@ -142,6 +142,26 @@ export default function ManualCount({ onBack }) {
     URL.revokeObjectURL(url)
   }
 
+  // Fonctions calculatrice
+  function appendToInput(char) {
+    setInputValue(prev => prev + char)
+  }
+
+  function backspace() {
+    setInputValue(prev => prev.slice(0, -1))
+  }
+
+  function clearInput() {
+    setInputValue('')
+  }
+
+  // Aperçu du résultat en temps réel
+  const preview = useMemo(() => {
+    if (!inputValue) return null
+    const result = evaluateExpression(inputValue)
+    return result ? result.result : null
+  }, [inputValue])
+
   // Références avec des comptages
   const usedRefs = Object.keys(counts).filter(ref => counts[ref].entries.length > 0)
 
@@ -224,31 +244,45 @@ export default function ManualCount({ onBack }) {
           )}
         </div>
 
-        {/* Zone de saisie */}
+        {/* Calculatrice */}
         {currentRef && (
-          <div className="p-4 bg-white border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addEntry()}
-                placeholder="5×4×10 ou 5*4*10"
-                autoFocus
-                className="flex-1 px-4 py-3 text-lg border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
-              />
-              <button
-                onClick={addEntry}
-                disabled={!inputValue}
-                className="px-6 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 active:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
-              >
-                Ajouter
-              </button>
+          <div className="bg-white border-b border-slate-200">
+            {/* Écran */}
+            <div className="bg-slate-800 text-white p-4 mx-4 mt-4 rounded-t-xl">
+              <div className="text-right text-2xl font-mono min-h-[2rem] flex items-center justify-end">
+                <span>{inputValue || '0'}</span>
+                {preview !== null && (
+                  <span className="text-slate-400 ml-3">= {preview}</span>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Expressions: 5×4×10, 100+20-5, 12*5+3
-            </p>
+
+            {/* Boutons */}
+            <div className="grid grid-cols-4 gap-1 p-2 mx-4 mb-4 bg-slate-200 rounded-b-xl">
+              {/* Ligne 1: 7 8 9 × */}
+              <button onClick={() => appendToInput('7')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">7</button>
+              <button onClick={() => appendToInput('8')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">8</button>
+              <button onClick={() => appendToInput('9')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">9</button>
+              <button onClick={() => appendToInput('×')} className="bg-amber-500 hover:bg-amber-600 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">×</button>
+
+              {/* Ligne 2: 4 5 6 - */}
+              <button onClick={() => appendToInput('4')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">4</button>
+              <button onClick={() => appendToInput('5')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">5</button>
+              <button onClick={() => appendToInput('6')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">6</button>
+              <button onClick={() => appendToInput('-')} className="bg-amber-500 hover:bg-amber-600 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">−</button>
+
+              {/* Ligne 3: 1 2 3 + */}
+              <button onClick={() => appendToInput('1')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">1</button>
+              <button onClick={() => appendToInput('2')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">2</button>
+              <button onClick={() => appendToInput('3')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">3</button>
+              <button onClick={() => appendToInput('+')} className="bg-amber-500 hover:bg-amber-600 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">+</button>
+
+              {/* Ligne 4: C 0 ← = */}
+              <button onClick={clearInput} className="bg-red-500 hover:bg-red-600 text-white text-xl font-bold py-4 rounded-lg active:scale-95 transition-all">C</button>
+              <button onClick={() => appendToInput('0')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">0</button>
+              <button onClick={backspace} className="bg-slate-400 hover:bg-slate-500 text-white text-xl font-bold py-4 rounded-lg active:scale-95 transition-all">←</button>
+              <button onClick={addEntry} disabled={!inputValue || preview === null} className="bg-green-500 hover:bg-green-600 disabled:bg-slate-300 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">=</button>
+            </div>
           </div>
         )}
 
