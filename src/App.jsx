@@ -83,6 +83,7 @@ export default function App() {
           onResume={handleResume}
           onDelete={handleDelete}
           onChangeReference={handleChangeReference}
+          onRefresh={loadData}
         />
       )}
       {screen === 'form' && (
