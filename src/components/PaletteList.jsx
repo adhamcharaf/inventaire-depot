@@ -62,8 +62,13 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
     }
   })
 
-  // Extraire les références uniques utilisées
-  const usedReferences = Object.keys(groupedPalettes).sort()
+  // Extraire les références uniques utilisées et les trier par dernière modification
+  const usedReferences = Object.keys(groupedPalettes).sort((a, b) => {
+    // Trouver la date de modification la plus récente pour chaque groupe
+    const latestA = Math.max(...groupedPalettes[a].map(p => p.updatedAt))
+    const latestB = Math.max(...groupedPalettes[b].map(p => p.updatedAt))
+    return latestB - latestA // Plus récent en premier
+  })
 
   // Filtrer les références selon la recherche
   const searchLower = searchFilter.toLowerCase()
