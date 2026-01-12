@@ -1,8 +1,39 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import references from '../data/references'
 
+// Évalue une expression mathématique simple (+ - × *)
+function evaluateExpression(input) {
+  if (!input || input.trim() === '') return null
+
+  // Normaliser: remplacer × et x par *, supprimer espaces
+  let expr = input.trim().replace(/×/g, '*').replace(/x/gi, '*').replace(/\s+/g, '')
+
+  // Vérifier que l'expression est valide (chiffres et opérateurs seulement)
+  if (!/^-?[\d]+([+\-*][\d]+)*$/.test(expr)) {
+    return null
+  }
+
+  try {
+    // Évaluer l'expression de manière sécurisée
+    // On utilise Function au lieu de eval pour un peu plus de sécurité
+    const result = Function('"use strict"; return (' + expr + ')')()
+
+    if (!isFinite(result)) return null
+
+    // Normaliser l'expression pour l'affichage (utiliser ×)
+    const displayExpr = input.trim().replace(/\*/g, '×').replace(/x/gi, '×')
+
+    return {
+      expression: displayExpr,
+      result: Math.round(result) // Arrondir au cas où
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function ManualCount({ onBack }) {
-  // État: { reference: { entries: [10, 20, -5], total: 25 }, ... }
+  // État: { reference: { entries: [{expression, result}, ...], total: 25 }, ... }
   const [counts, setCounts] = useState({})
   const [currentRef, setCurrentRef] = useState(null)
   const [inputValue, setInputValue] = useState('')
@@ -46,13 +77,15 @@ export default function ManualCount({ onBack }) {
   }
 
   function addEntry() {
-    const value = parseInt(inputValue, 10)
-    if (isNaN(value) || value === 0 || !currentRef) return
+    if (!currentRef) return
+
+    const evaluated = evaluateExpression(inputValue)
+    if (!evaluated || evaluated.result === 0) return
 
     setCounts(prev => {
       const current = prev[currentRef] || { entries: [], total: 0 }
-      const newEntries = [...current.entries, value]
-      const newTotal = newEntries.reduce((sum, v) => sum + v, 0)
+      const newEntries = [...current.entries, evaluated]
+      const newTotal = newEntries.reduce((sum, e) => sum + e.result, 0)
       return {
         ...prev,
         [currentRef]: { entries: newEntries, total: newTotal }
@@ -66,7 +99,7 @@ export default function ManualCount({ onBack }) {
     setCounts(prev => {
       const current = prev[currentRef]
       const newEntries = current.entries.filter((_, i) => i !== index)
-      const newTotal = newEntries.reduce((sum, v) => sum + v, 0)
+      const newTotal = newEntries.reduce((sum, e) => sum + e.result, 0)
       return {
         ...prev,
         [currentRef]: { entries: newEntries, total: newTotal }
@@ -89,7 +122,12 @@ export default function ManualCount({ onBack }) {
     const lines = ['reference;quantite;detail']
     Object.entries(counts).forEach(([ref, data]) => {
       if (data.total !== 0 || data.entries.length > 0) {
-        const detail = data.entries.join(' + ').replace(/\+ -/g, '- ')
+        // Format: expression=result pour chaque entrée
+        const detail = data.entries.map((e, i) => {
+          const prefix = i === 0 ? '' : (e.result >= 0 ? ' + ' : ' - ')
+          const expr = e.result >= 0 ? e.expression : e.expression.replace(/^-/, '')
+          return `${prefix}${expr}`
+        }).join('')
         lines.push(`${ref};${data.total};${detail}`)
       }
     })
@@ -103,6 +141,26 @@ export default function ManualCount({ onBack }) {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  // Fonctions calculatrice
+  function appendToInput(char) {
+    setInputValue(prev => prev + char)
+  }
+
+  function backspace() {
+    setInputValue(prev => prev.slice(0, -1))
+  }
+
+  function clearInput() {
+    setInputValue('')
+  }
+
+  // Aperçu du résultat en temps réel
+  const preview = useMemo(() => {
+    if (!inputValue) return null
+    const result = evaluateExpression(inputValue)
+    return result ? result.result : null
+  }, [inputValue])
 
   // Références avec des comptages
   const usedRefs = Object.keys(counts).filter(ref => counts[ref].entries.length > 0)
@@ -186,30 +244,45 @@ export default function ManualCount({ onBack }) {
           )}
         </div>
 
-        {/* Zone de saisie */}
+        {/* Calculatrice */}
         {currentRef && (
-          <div className="p-4 bg-white border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addEntry()}
-                placeholder="Entrer un nombre..."
-                autoFocus
-                className="flex-1 px-4 py-3 text-lg border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
-              />
-              <button
-                onClick={addEntry}
-                disabled={!inputValue || parseInt(inputValue, 10) === 0}
-                className="px-6 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 active:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
-              >
-                Ajouter
-              </button>
+          <div className="bg-white border-b border-slate-200">
+            {/* Écran */}
+            <div className="bg-slate-800 text-white p-4 mx-4 mt-4 rounded-t-xl">
+              <div className="text-right text-2xl font-mono min-h-[2rem] flex items-center justify-end">
+                <span>{inputValue || '0'}</span>
+                {preview !== null && (
+                  <span className="text-slate-400 ml-3">= {preview}</span>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Entrez des nombres positifs pour ajouter, négatifs pour soustraire
-            </p>
+
+            {/* Boutons */}
+            <div className="grid grid-cols-4 gap-1 p-2 mx-4 mb-4 bg-slate-200 rounded-b-xl">
+              {/* Ligne 1: 7 8 9 × */}
+              <button onClick={() => appendToInput('7')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">7</button>
+              <button onClick={() => appendToInput('8')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">8</button>
+              <button onClick={() => appendToInput('9')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">9</button>
+              <button onClick={() => appendToInput('×')} className="bg-amber-500 hover:bg-amber-600 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">×</button>
+
+              {/* Ligne 2: 4 5 6 - */}
+              <button onClick={() => appendToInput('4')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">4</button>
+              <button onClick={() => appendToInput('5')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">5</button>
+              <button onClick={() => appendToInput('6')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">6</button>
+              <button onClick={() => appendToInput('-')} className="bg-amber-500 hover:bg-amber-600 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">−</button>
+
+              {/* Ligne 3: 1 2 3 + */}
+              <button onClick={() => appendToInput('1')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">1</button>
+              <button onClick={() => appendToInput('2')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">2</button>
+              <button onClick={() => appendToInput('3')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">3</button>
+              <button onClick={() => appendToInput('+')} className="bg-amber-500 hover:bg-amber-600 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">+</button>
+
+              {/* Ligne 4: C 0 ← = */}
+              <button onClick={clearInput} className="bg-red-500 hover:bg-red-600 text-white text-xl font-bold py-4 rounded-lg active:scale-95 transition-all">C</button>
+              <button onClick={() => appendToInput('0')} className="bg-white hover:bg-slate-50 text-slate-800 text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">0</button>
+              <button onClick={backspace} className="bg-slate-400 hover:bg-slate-500 text-white text-xl font-bold py-4 rounded-lg active:scale-95 transition-all">←</button>
+              <button onClick={addEntry} disabled={!inputValue || preview === null} className="bg-green-500 hover:bg-green-600 disabled:bg-slate-300 text-white text-2xl font-bold py-4 rounded-lg active:scale-95 transition-all">=</button>
+            </div>
           </div>
         )}
 
@@ -225,9 +298,11 @@ export default function ManualCount({ onBack }) {
               <div className="divide-y divide-slate-100">
                 {counts[currentRef].entries.map((entry, idx) => (
                   <div key={idx} className="px-4 py-3 flex items-center justify-between">
-                    <span className={`text-lg font-mono ${entry >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {entry >= 0 ? '+' : ''}{entry}
-                    </span>
+                    <div className={`text-lg font-mono ${entry.result >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className="text-slate-500">{entry.expression}</span>
+                      <span className="mx-2">=</span>
+                      <span className="font-bold">{entry.result >= 0 ? '+' : ''}{entry.result}</span>
+                    </div>
                     <button
                       onClick={() => removeEntry(idx)}
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -241,9 +316,11 @@ export default function ManualCount({ onBack }) {
               </div>
               <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
                 <p className="text-sm text-slate-500 font-mono">
-                  {counts[currentRef].entries.map((e, i) => (
-                    i === 0 ? e : (e >= 0 ? ` + ${e}` : ` - ${Math.abs(e)}`)
-                  )).join('')} = <span className="font-bold text-slate-700">{counts[currentRef].total}</span>
+                  {counts[currentRef].entries.map((e, i) => {
+                    const prefix = i === 0 ? '' : (e.result >= 0 ? ' + ' : ' - ')
+                    const expr = e.result >= 0 ? e.expression : e.expression.replace(/^-/, '')
+                    return `${prefix}${expr}`
+                  }).join('')} = <span className="font-bold text-slate-700">{counts[currentRef].total}</span>
                 </p>
               </div>
             </div>
@@ -287,9 +364,11 @@ export default function ManualCount({ onBack }) {
                         </div>
                       </div>
                       <p className="text-xs text-slate-400 font-mono truncate">
-                        {counts[ref].entries.map((e, i) => (
-                          i === 0 ? e : (e >= 0 ? ` + ${e}` : ` - ${Math.abs(e)}`)
-                        )).join('')}
+                        {counts[ref].entries.map((e, i) => {
+                          const prefix = i === 0 ? '' : (e.result >= 0 ? ' + ' : ' - ')
+                          const expr = e.result >= 0 ? e.expression : e.expression.replace(/^-/, '')
+                          return `${prefix}${expr}`
+                        }).join('')}
                       </p>
                     </div>
                   ))}
