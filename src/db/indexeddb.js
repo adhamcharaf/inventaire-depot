@@ -100,9 +100,19 @@ function generateFullCubes(dimensions) {
   return cubes
 }
 
-function calculateStats(cubes, dimensions, extraCartons = 0) {
-  const capacity = dimensions.length * dimensions.width * dimensions.height
-  const present = cubes.length
+function calculateStats(cubes, dimensions, extraCartons = 0, paletteType = 'classic') {
+  let capacity, present
+
+  if (paletteType === 'simple') {
+    // Palette coupée: base × hauteur
+    capacity = dimensions.base * dimensions.height
+    present = capacity // Toujours pleine
+  } else {
+    // Palette classique: L × l × H
+    capacity = dimensions.length * dimensions.width * dimensions.height
+    present = cubes.length
+  }
+
   const totalPresent = present + extraCartons
   return {
     capacity,
@@ -113,18 +123,21 @@ function calculateStats(cubes, dimensions, extraCartons = 0) {
   }
 }
 
-export async function createPalette(dimensions, name = '', reference = null) {
+export async function createPalette(dimensions, name = '', reference = null, paletteType = 'classic') {
   const database = await openDB()
-  const cubes = generateFullCubes(dimensions)
   const now = Date.now()
+
+  // Pour les palettes simples (coupées), pas de cubes 3D
+  const cubes = paletteType === 'simple' ? [] : generateFullCubes(dimensions)
 
   const palette = {
     id: generateId(),
     name: name || `Palette ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+    type: paletteType,
     dimensions,
     cubes,
     extraCartons: 0,
-    stats: calculateStats(cubes, dimensions, 0),
+    stats: calculateStats(cubes, dimensions, 0, paletteType),
     reference,
     createdAt: now,
     updatedAt: now
@@ -173,10 +186,11 @@ export async function updatePalette(palette) {
   const database = await openDB()
 
   const extraCartons = palette.extraCartons || 0
+  const paletteType = palette.type || 'classic'
   const updated = {
     ...palette,
     extraCartons,
-    stats: calculateStats(palette.cubes, palette.dimensions, extraCartons),
+    stats: calculateStats(palette.cubes, palette.dimensions, extraCartons, paletteType),
     updatedAt: Date.now()
   }
 

@@ -75,32 +75,57 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
   const PaletteCard = ({ palette }) => {
     const extraCartons = palette.extraCartons || 0
     const totalCartons = palette.stats.present + extraCartons
+    const isSimple = palette.type === 'simple'
+
+    // Formater les dimensions selon le type
+    const dimensionsText = isSimple
+      ? `${palette.dimensions.base} × ${palette.dimensions.height}`
+      : `${palette.dimensions.length} × ${palette.dimensions.width} × ${palette.dimensions.height}`
 
     return (
       <div
         onClick={() => onResume(palette.id)}
-        className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 active:bg-slate-50 transition-colors"
+        className={`bg-white rounded-xl p-4 shadow-sm border active:bg-slate-50 transition-colors ${
+          isSimple ? 'border-purple-200' : 'border-slate-100'
+        }`}
       >
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <h3 className="font-semibold text-slate-900">{palette.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-slate-900">{palette.name}</h3>
+              {isSimple && (
+                <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                  Coupée
+                </span>
+              )}
+            </div>
             <p className="text-sm text-slate-500 mt-1">
-              {palette.dimensions.length} × {palette.dimensions.width} × {palette.dimensions.height}
+              {dimensionsText}
+              {isSimple && <span className="text-purple-500"> (base × h)</span>}
             </p>
           </div>
 
           <div className="text-right">
-            <div className="text-lg font-bold text-blue-500">
-              {palette.stats.fillRate}%
-            </div>
+            {!isSimple && (
+              <div className="text-lg font-bold text-blue-500">
+                {palette.stats.fillRate}%
+              </div>
+            )}
             <div className="text-xs text-slate-400">
               {palette.stats.present}/{palette.stats.capacity}
-              {extraCartons > 0 && (
-                <span className="text-amber-600"> +{extraCartons}</span>
+              {extraCartons !== 0 && (
+                <span className={extraCartons >= 0 ? 'text-amber-600' : 'text-red-600'}>
+                  {' '}{extraCartons >= 0 ? '+' : ''}{extraCartons}
+                </span>
               )}
             </div>
-            {extraCartons > 0 && (
-              <div className="text-xs font-semibold text-green-600">
+            {extraCartons !== 0 && (
+              <div className={`text-xs font-semibold ${isSimple ? 'text-purple-600' : 'text-green-600'}`}>
+                Total: {totalCartons}
+              </div>
+            )}
+            {isSimple && extraCartons === 0 && (
+              <div className="text-xs font-semibold text-purple-600">
                 Total: {totalCartons}
               </div>
             )}
