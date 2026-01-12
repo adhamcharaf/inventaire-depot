@@ -7,7 +7,7 @@ export default function StatsBar({ present, capacity, fillRate, extraCartons, to
   function handleSubmit(e) {
     e.preventDefault()
     const value = parseInt(inputValue, 10)
-    if (!isNaN(value) && value >= 0) {
+    if (!isNaN(value)) {
       onExtraCartonsChange(value)
     }
     setShowExtraInput(false)
@@ -51,11 +51,10 @@ export default function StatsBar({ present, capacity, fillRate, extraCartons, to
             <form onSubmit={handleSubmit} className="flex items-center gap-1">
               <input
                 type="number"
-                min="0"
                 value={inputValue}
                 onChange={handleInputChange}
                 autoFocus
-                className="w-16 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-20 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <button
                 type="submit"
@@ -81,7 +80,11 @@ export default function StatsBar({ present, capacity, fillRate, extraCartons, to
           ) : (
             <button
               onClick={() => setShowExtraInput(true)}
-              className="flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors"
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${
+                extraCartons >= 0
+                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                  : 'bg-red-100 text-red-700 hover:bg-red-200'
+              }`}
             >
               <span className="font-bold">{extraCartons}</span>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

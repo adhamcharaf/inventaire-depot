@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import references from '../data/references'
 
-export default function PaletteList({ palettes, onResume, onDelete, onChangeReference }) {
+export default function PaletteList({ palettes, onResume, onDelete, onChangeReference, searchFilter = '' }) {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
 
@@ -62,45 +62,89 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
     }
   })
 
-  // Extraire les références uniques utilisées
-  const usedReferences = Object.keys(groupedPalettes).sort()
-
-  // Initialiser expandedGroups pour les nouvelles références
-  usedReferences.forEach(ref => {
-    if (expandedGroups[ref] === undefined) {
-      expandedGroups[ref] = true
-    }
+  // Extraire les références uniques utilisées et les trier par dernière modification
+  const usedReferences = Object.keys(groupedPalettes).sort((a, b) => {
+    // Trouver la date de modification la plus récente pour chaque groupe
+    const latestA = Math.max(...groupedPalettes[a].map(p => p.updatedAt))
+    const latestB = Math.max(...groupedPalettes[b].map(p => p.updatedAt))
+    return latestB - latestA // Plus récent en premier
   })
+
+  // Filtrer les références selon la recherche
+  const searchLower = searchFilter.toLowerCase()
+  const filteredReferences = searchFilter
+    ? usedReferences.filter(ref => ref.toLowerCase().includes(searchLower))
+    : usedReferences
+
+  // Filtrer aussi les palettes sans référence par leur nom
+  const filteredUngrouped = searchFilter
+    ? ungroupedPalettes.filter(p => p.name.toLowerCase().includes(searchLower))
+    : ungroupedPalettes
+
+  // Déterminer si un groupe doit être ouvert
+  // - Par défaut fermé
+  // - Ouvert si l'utilisateur l'a ouvert manuellement
+  // - Ouvert automatiquement si recherche active
+  function isGroupExpanded(reference) {
+    if (searchFilter) return true // Ouvrir si recherche active
+    if (expandedGroups[reference] !== undefined) return expandedGroups[reference]
+    return false // Fermé par défaut
+  }
 
   const PaletteCard = ({ palette }) => {
     const extraCartons = palette.extraCartons || 0
     const totalCartons = palette.stats.present + extraCartons
+    const isSimple = palette.type === 'simple'
+
+    // Formater les dimensions selon le type
+    const dimensionsText = isSimple
+      ? `${palette.dimensions.base} × ${palette.dimensions.height}`
+      : `${palette.dimensions.length} × ${palette.dimensions.width} × ${palette.dimensions.height}`
 
     return (
       <div
         onClick={() => onResume(palette.id)}
-        className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 active:bg-slate-50 transition-colors"
+        className={`bg-white rounded-xl p-4 shadow-sm border active:bg-slate-50 transition-colors ${
+          isSimple ? 'border-purple-200' : 'border-slate-100'
+        }`}
       >
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <h3 className="font-semibold text-slate-900">{palette.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-slate-900">{palette.name}</h3>
+              {isSimple && (
+                <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                  Coupée
+                </span>
+              )}
+            </div>
             <p className="text-sm text-slate-500 mt-1">
-              {palette.dimensions.length} × {palette.dimensions.width} × {palette.dimensions.height}
+              {dimensionsText}
+              {isSimple && <span className="text-purple-500"> (base × h)</span>}
             </p>
           </div>
 
           <div className="text-right">
-            <div className="text-lg font-bold text-blue-500">
-              {palette.stats.fillRate}%
-            </div>
+            {!isSimple && (
+              <div className="text-lg font-bold text-blue-500">
+                {palette.stats.fillRate}%
+              </div>
+            )}
             <div className="text-xs text-slate-400">
               {palette.stats.present}/{palette.stats.capacity}
-              {extraCartons > 0 && (
-                <span className="text-amber-600"> +{extraCartons}</span>
+              {extraCartons !== 0 && (
+                <span className={extraCartons >= 0 ? 'text-amber-600' : 'text-red-600'}>
+                  {' '}{extraCartons >= 0 ? '+' : ''}{extraCartons}
+                </span>
               )}
             </div>
-            {extraCartons > 0 && (
-              <div className="text-xs font-semibold text-green-600">
+            {extraCartons !== 0 && (
+              <div className={`text-xs font-semibold ${isSimple ? 'text-purple-600' : 'text-green-600'}`}>
+                Total: {totalCartons}
+              </div>
+            )}
+            {isSimple && extraCartons === 0 && (
+              <div className="text-xs font-semibold text-purple-600">
                 Total: {totalCartons}
               </div>
             )}
@@ -149,7 +193,7 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
 
   const ReferenceSection = ({ reference, palettesInGroup }) => {
     const stats = calculateGroupStats(palettesInGroup)
-    const isExpanded = expandedGroups[reference] !== false
+    const isExpanded = isGroupExpanded(reference)
 
     return (
       <div className="mb-4">
@@ -178,8 +222,10 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
               </div>
               <div className="text-xs text-slate-500">
                 {stats.totalPresent}/{stats.totalCapacity}
-                {stats.totalExtra > 0 && (
-                  <span className="text-amber-600"> +{stats.totalExtra}</span>
+                {stats.totalExtra !== 0 && (
+                  <span className={stats.totalExtra >= 0 ? 'text-amber-600' : 'text-red-600'}>
+                    {' '}{stats.totalExtra >= 0 ? '+' : ''}{stats.totalExtra}
+                  </span>
                 )}
               </div>
             </div>
@@ -208,10 +254,22 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
     )
   }
 
+  // Message si aucun résultat
+  if (searchFilter && filteredReferences.length === 0 && filteredUngrouped.length === 0) {
+    return (
+      <div className="text-center py-8 text-slate-400">
+        <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <p>Aucune référence trouvée pour "{searchFilter}"</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
       {/* Références avec leurs palettes */}
-      {usedReferences.map(reference => {
+      {filteredReferences.map(reference => {
         const palettesInGroup = groupedPalettes[reference] || []
         if (palettesInGroup.length === 0) return null
         return (
@@ -220,13 +278,13 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
       })}
 
       {/* Palettes sans référence */}
-      {ungroupedPalettes.length > 0 && (
+      {filteredUngrouped.length > 0 && (
         <div>
-          {usedReferences.length > 0 && (
+          {filteredReferences.length > 0 && (
             <h3 className="text-sm font-medium text-slate-400 mb-3">Sans référence</h3>
           )}
           <div className="space-y-3">
-            {ungroupedPalettes.map(palette => (
+            {filteredUngrouped.map(palette => (
               <PaletteCard key={palette.id} palette={palette} />
             ))}
           </div>

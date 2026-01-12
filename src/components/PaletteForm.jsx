@@ -3,9 +3,19 @@ import { PALETTE_CONFIG } from '../lib/config'
 import references from '../data/references'
 
 export default function PaletteForm({ onCreate, onBack }) {
+  // Type de palette: 'classic' (3D) ou 'simple' (base × hauteur)
+  const [paletteType, setPaletteType] = useState('classic')
+
+  // Dimensions palette classique
   const [length, setLength] = useState(PALETTE_CONFIG.length.default)
   const [width, setWidth] = useState(PALETTE_CONFIG.width.default)
   const [height, setHeight] = useState(PALETTE_CONFIG.height.default)
+
+  // Dimensions palette simple (coupée)
+  const [base, setBase] = useState(12)
+  const [simpleHeight, setSimpleHeight] = useState(5)
+  const [extraCartons, setExtraCartons] = useState(0)
+
   const [name, setName] = useState('')
   const [reference, setReference] = useState(null)
 
@@ -15,7 +25,13 @@ export default function PaletteForm({ onCreate, onBack }) {
   const [filteredRefs, setFilteredRefs] = useState([])
   const dropdownRef = useRef(null)
 
-  const capacity = length * width * height
+  const baseCapacity = paletteType === 'classic'
+    ? length * width * height
+    : base * simpleHeight
+
+  const totalCapacity = paletteType === 'classic'
+    ? baseCapacity
+    : baseCapacity + extraCartons
 
   // Filtrer les références quand on tape
   useEffect(() => {
@@ -56,7 +72,11 @@ export default function PaletteForm({ onCreate, onBack }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    onCreate({ length, width, height }, name, reference)
+    if (paletteType === 'classic') {
+      onCreate({ length, width, height }, name, reference, 'classic', 0)
+    } else {
+      onCreate({ base, height: simpleHeight }, name, reference, 'simple', extraCartons)
+    }
   }
 
   return (
@@ -75,6 +95,49 @@ export default function PaletteForm({ onCreate, onBack }) {
       </header>
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-auto">
+        {/* Sélection du type de palette */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-600 mb-2">
+            Type de palette
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setPaletteType('classic')}
+              className={`p-3 rounded-xl border-2 transition-all ${
+                paletteType === 'classic'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <span className="font-medium text-sm">Classique</span>
+                <span className="text-xs opacity-70">L × l × H</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaletteType('simple')}
+              className={`p-3 rounded-xl border-2 transition-all ${
+                paletteType === 'simple'
+                  ? 'border-purple-500 bg-purple-50 text-purple-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <span className="font-medium text-sm">Coupée</span>
+                <span className="text-xs opacity-70">Base × H</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Référence sélectionnée ou recherche (obligatoire) */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-slate-600 mb-2">
@@ -139,38 +202,109 @@ export default function PaletteForm({ onCreate, onBack }) {
           />
         </div>
 
-        {/* Sliders dimensions */}
+        {/* Dimensions selon le type */}
         <div className="space-y-6 flex-1">
-          <DimensionSlider
-            label="Longueur (L)"
-            value={length}
-            onChange={setLength}
-            min={PALETTE_CONFIG.length.min}
-            max={PALETTE_CONFIG.length.max}
-          />
+          {paletteType === 'classic' ? (
+            // Palette classique: L × l × H
+            <>
+              <DimensionSlider
+                label="Longueur (L)"
+                value={length}
+                onChange={setLength}
+                min={PALETTE_CONFIG.length.min}
+                max={PALETTE_CONFIG.length.max}
+              />
 
-          <DimensionSlider
-            label="Largeur (l)"
-            value={width}
-            onChange={setWidth}
-            min={PALETTE_CONFIG.width.min}
-            max={PALETTE_CONFIG.width.max}
-          />
+              <DimensionSlider
+                label="Largeur (l)"
+                value={width}
+                onChange={setWidth}
+                min={PALETTE_CONFIG.width.min}
+                max={PALETTE_CONFIG.width.max}
+              />
 
-          <DimensionSlider
-            label="Hauteur (H)"
-            value={height}
-            onChange={setHeight}
-            min={PALETTE_CONFIG.height.min}
-            max={PALETTE_CONFIG.height.max}
-          />
+              <DimensionSlider
+                label="Hauteur (H)"
+                value={height}
+                onChange={setHeight}
+                min={PALETTE_CONFIG.height.min}
+                max={PALETTE_CONFIG.height.max}
+              />
+            </>
+          ) : (
+            // Palette coupée: Base × Hauteur + Cartons
+            <div className="bg-purple-50 rounded-xl p-4">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-purple-700 mb-2">
+                    Base (articles/couche)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={base}
+                    onChange={(e) => setBase(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-4 py-3 text-lg font-bold text-center border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <span className="text-2xl text-purple-400 mt-6">×</span>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-purple-700 mb-2">
+                    Hauteur (couches)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={simpleHeight}
+                    onChange={(e) => setSimpleHeight(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-4 py-3 text-lg font-bold text-center border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Ajustement cartons */}
+              <div className="mt-4 pt-4 border-t border-purple-200">
+                <label className="block text-sm font-medium text-purple-700 mb-2">
+                  Ajustement (cartons en + ou -)
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setExtraCartons(extraCartons - 1)}
+                    className="w-12 h-12 flex items-center justify-center bg-red-500 text-white rounded-xl hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-xl"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    value={extraCartons}
+                    onChange={(e) => setExtraCartons(parseInt(e.target.value) || 0)}
+                    className="flex-1 px-4 py-3 text-lg font-bold text-center border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setExtraCartons(extraCartons + 1)}
+                    className="w-12 h-12 flex items-center justify-center bg-green-500 text-white rounded-xl hover:bg-green-600 active:bg-green-700 transition-colors font-bold text-xl"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-sm text-purple-600 text-center mt-4">
+                {baseCapacity} {extraCartons !== 0 ? (extraCartons >= 0 ? '+' : '') + ' ' + extraCartons + ' =' : '='} <span className="font-bold">{totalCapacity}</span> articles
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Capacité + Bouton */}
         <div className="mt-6 pt-4 border-t border-slate-100">
           <div className="text-center mb-4">
-            <span className="text-slate-500">Capacité totale : </span>
-            <span className="text-2xl font-bold text-blue-500">{capacity}</span>
+            <span className="text-slate-500">Total : </span>
+            <span className={`text-2xl font-bold ${paletteType === 'classic' ? 'text-blue-500' : 'text-purple-500'}`}>
+              {totalCapacity}
+            </span>
             <span className="text-slate-500"> articles</span>
           </div>
 
@@ -179,7 +313,9 @@ export default function PaletteForm({ onCreate, onBack }) {
             disabled={!reference}
             className={`w-full font-semibold py-4 px-6 rounded-xl shadow-lg transition-colors ${
               reference
-                ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
+                ? paletteType === 'classic'
+                  ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
+                  : 'bg-purple-500 hover:bg-purple-600 active:bg-purple-700 text-white'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
