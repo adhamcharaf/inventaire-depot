@@ -26,8 +26,8 @@ export default function App() {
     setPalettes(palettesData)
   }
 
-  async function handleCreate(dimensions, name, reference, paletteType = 'classic') {
-    const palette = await createPalette(dimensions, name, reference, paletteType)
+  async function handleCreate(dimensions, name, reference, paletteType = 'classic', extraCartons = 0) {
+    const palette = await createPalette(dimensions, name, reference, paletteType, extraCartons)
     await loadData()
 
     // Pour les palettes simples, pas de vue 3D

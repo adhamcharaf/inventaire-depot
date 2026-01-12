@@ -14,6 +14,7 @@ export default function PaletteForm({ onCreate, onBack }) {
   // Dimensions palette simple (coupée)
   const [base, setBase] = useState(12)
   const [simpleHeight, setSimpleHeight] = useState(5)
+  const [extraCartons, setExtraCartons] = useState(0)
 
   const [name, setName] = useState('')
   const [reference, setReference] = useState(null)
@@ -24,9 +25,13 @@ export default function PaletteForm({ onCreate, onBack }) {
   const [filteredRefs, setFilteredRefs] = useState([])
   const dropdownRef = useRef(null)
 
-  const capacity = paletteType === 'classic'
+  const baseCapacity = paletteType === 'classic'
     ? length * width * height
     : base * simpleHeight
+
+  const totalCapacity = paletteType === 'classic'
+    ? baseCapacity
+    : baseCapacity + extraCartons
 
   // Filtrer les références quand on tape
   useEffect(() => {
@@ -68,9 +73,9 @@ export default function PaletteForm({ onCreate, onBack }) {
   function handleSubmit(e) {
     e.preventDefault()
     if (paletteType === 'classic') {
-      onCreate({ length, width, height }, name, reference, 'classic')
+      onCreate({ length, width, height }, name, reference, 'classic', 0)
     } else {
-      onCreate({ base, height: simpleHeight }, name, reference, 'simple')
+      onCreate({ base, height: simpleHeight }, name, reference, 'simple', extraCartons)
     }
   }
 
@@ -227,7 +232,7 @@ export default function PaletteForm({ onCreate, onBack }) {
               />
             </>
           ) : (
-            // Palette coupée: Base × Hauteur
+            // Palette coupée: Base × Hauteur + Cartons
             <div className="bg-purple-50 rounded-xl p-4">
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex-1">
@@ -256,8 +261,38 @@ export default function PaletteForm({ onCreate, onBack }) {
                   />
                 </div>
               </div>
-              <p className="text-sm text-purple-600 text-center">
-                Utilisez ce type pour les palettes non-uniformes où seul le nombre par couche est constant.
+
+              {/* Ajustement cartons */}
+              <div className="mt-4 pt-4 border-t border-purple-200">
+                <label className="block text-sm font-medium text-purple-700 mb-2">
+                  Ajustement (cartons en + ou -)
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setExtraCartons(extraCartons - 1)}
+                    className="w-12 h-12 flex items-center justify-center bg-red-500 text-white rounded-xl hover:bg-red-600 active:bg-red-700 transition-colors font-bold text-xl"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    value={extraCartons}
+                    onChange={(e) => setExtraCartons(parseInt(e.target.value) || 0)}
+                    className="flex-1 px-4 py-3 text-lg font-bold text-center border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setExtraCartons(extraCartons + 1)}
+                    className="w-12 h-12 flex items-center justify-center bg-green-500 text-white rounded-xl hover:bg-green-600 active:bg-green-700 transition-colors font-bold text-xl"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-sm text-purple-600 text-center mt-4">
+                {baseCapacity} {extraCartons !== 0 ? (extraCartons >= 0 ? '+' : '') + ' ' + extraCartons + ' =' : '='} <span className="font-bold">{totalCapacity}</span> articles
               </p>
             </div>
           )}
@@ -266,9 +301,9 @@ export default function PaletteForm({ onCreate, onBack }) {
         {/* Capacité + Bouton */}
         <div className="mt-6 pt-4 border-t border-slate-100">
           <div className="text-center mb-4">
-            <span className="text-slate-500">Capacité totale : </span>
+            <span className="text-slate-500">Total : </span>
             <span className={`text-2xl font-bold ${paletteType === 'classic' ? 'text-blue-500' : 'text-purple-500'}`}>
-              {capacity}
+              {totalCapacity}
             </span>
             <span className="text-slate-500"> articles</span>
           </div>

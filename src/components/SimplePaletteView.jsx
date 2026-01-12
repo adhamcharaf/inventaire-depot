@@ -26,22 +26,6 @@ export default function SimplePaletteView({ palette, onUpdate, onBack }) {
     setShowExtraInput(false)
   }
 
-  function addPalette() {
-    const newExtra = extraCartons + paletteCapacity
-    const updated = { ...palette, extraCartons: newExtra }
-    onUpdate(updated)
-    setExtraCartons(newExtra)
-    setInputValue(newExtra.toString())
-  }
-
-  function removePalette() {
-    const newExtra = extraCartons - paletteCapacity
-    const updated = { ...palette, extraCartons: newExtra }
-    onUpdate(updated)
-    setExtraCartons(newExtra)
-    setInputValue(newExtra.toString())
-  }
-
   return (
     <div className="h-full flex flex-col safe-top safe-bottom bg-slate-50">
       {/* Header */}
@@ -69,7 +53,7 @@ export default function SimplePaletteView({ palette, onUpdate, onBack }) {
 
         {/* Info palette de base */}
         <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
-          <div className="text-center mb-4">
+          <div className="text-center">
             <span className="text-sm text-slate-500">Configuration de base</span>
             <div className="flex items-center justify-center gap-3 mt-2">
               <div className="bg-purple-100 rounded-lg px-4 py-2">
@@ -90,32 +74,7 @@ export default function SimplePaletteView({ palette, onUpdate, onBack }) {
           </div>
         </div>
 
-        {/* Ajout/Retrait de palettes complètes */}
-        <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
-          <span className="text-sm text-slate-500 block mb-3">Ajouter/Retirer une palette complète</span>
-          <div className="flex gap-3">
-            <button
-              onClick={removePalette}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 active:bg-red-700 transition-colors font-medium"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-              </svg>
-              <span>-{paletteCapacity}</span>
-            </button>
-            <button
-              onClick={addPalette}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 active:bg-green-700 transition-colors font-medium"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span>+{paletteCapacity}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Cartons de côté (ajustement fin) */}
+        {/* Cartons de côté (ajustement) */}
         <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-500">Ajustement (cartons)</span>
@@ -173,7 +132,7 @@ export default function SimplePaletteView({ palette, onUpdate, onBack }) {
             <span className="text-purple-200 text-sm">Total articles</span>
             <p className="text-5xl font-bold text-white mt-1">{totalPresent}</p>
             <p className="text-purple-200 text-sm mt-2">
-              1 palette ({paletteCapacity}) {extraCartons >= 0 ? '+' : ''} {extraCartons} cartons
+              {paletteCapacity} {extraCartons !== 0 ? (extraCartons >= 0 ? '+' : '') + ' ' + extraCartons + ' cartons' : 'cartons'}
             </p>
           </div>
         </div>

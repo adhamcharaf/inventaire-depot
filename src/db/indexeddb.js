@@ -123,7 +123,7 @@ function calculateStats(cubes, dimensions, extraCartons = 0, paletteType = 'clas
   }
 }
 
-export async function createPalette(dimensions, name = '', reference = null, paletteType = 'classic') {
+export async function createPalette(dimensions, name = '', reference = null, paletteType = 'classic', extraCartons = 0) {
   const database = await openDB()
   const now = Date.now()
 
@@ -136,8 +136,8 @@ export async function createPalette(dimensions, name = '', reference = null, pal
     type: paletteType,
     dimensions,
     cubes,
-    extraCartons: 0,
-    stats: calculateStats(cubes, dimensions, 0, paletteType),
+    extraCartons,
+    stats: calculateStats(cubes, dimensions, extraCartons, paletteType),
     reference,
     createdAt: now,
     updatedAt: now
