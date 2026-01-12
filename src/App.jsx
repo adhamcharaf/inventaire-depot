@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import ModeSelector from './components/ModeSelector'
+import ManualCount from './components/ManualCount'
 import Home from './components/Home'
 import PaletteForm from './components/PaletteForm'
 import PaletteView3D from './components/PaletteView3D'
@@ -13,7 +15,7 @@ import {
 } from './db/indexeddb'
 
 export default function App() {
-  const [screen, setScreen] = useState('home')
+  const [screen, setScreen] = useState('modeSelector')
   const [palettes, setPalettes] = useState([])
   const [currentPalette, setCurrentPalette] = useState(null)
 
@@ -24,6 +26,14 @@ export default function App() {
   async function loadData() {
     const palettesData = await getAllPalettes()
     setPalettes(palettesData)
+  }
+
+  function handleSelectMode(mode) {
+    if (mode === 'manual') {
+      setScreen('manualCount')
+    } else {
+      setScreen('home')
+    }
   }
 
   async function handleCreate(dimensions, name, reference, paletteType = 'classic', extraCartons = 0) {
@@ -74,8 +84,18 @@ export default function App() {
     setScreen('home')
   }
 
+  function handleBackToModeSelector() {
+    setScreen('modeSelector')
+  }
+
   return (
     <div className="h-full">
+      {screen === 'modeSelector' && (
+        <ModeSelector onSelectMode={handleSelectMode} />
+      )}
+      {screen === 'manualCount' && (
+        <ManualCount onBack={handleBackToModeSelector} />
+      )}
       {screen === 'home' && (
         <Home
           palettes={palettes}
@@ -83,6 +103,7 @@ export default function App() {
           onResume={handleResume}
           onDelete={handleDelete}
           onChangeReference={handleChangeReference}
+          onBack={handleBackToModeSelector}
         />
       )}
       {screen === 'form' && (

@@ -7,7 +7,8 @@ export default function Home({
   onNew,
   onResume,
   onDelete,
-  onChangeReference
+  onChangeReference,
+  onBack
 }) {
   const [search, setSearch] = useState('')
 
@@ -16,9 +17,21 @@ export default function Home({
       {/* Header */}
       <header className="bg-blue-500 text-white px-4 py-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Inventaire Palettes</h1>
-            <p className="text-blue-100 text-sm mt-1">Comptez vos articles en 3D</p>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="p-2 -ml-2 hover:bg-blue-600 rounded-lg transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold">Comptage Appli</h1>
+              <p className="text-blue-100 text-sm mt-1">Palettes 3D et coupées</p>
+            </div>
           </div>
           {palettes.length > 0 && (
             <button
