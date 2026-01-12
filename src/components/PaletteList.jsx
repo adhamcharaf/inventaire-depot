@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import references from '../data/references'
 
-export default function PaletteList({ palettes, onResume, onDelete, onChangeReference }) {
+export default function PaletteList({ palettes, onResume, onDelete, onChangeReference, searchFilter = '' }) {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
 
@@ -65,12 +65,26 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
   // Extraire les références uniques utilisées
   const usedReferences = Object.keys(groupedPalettes).sort()
 
-  // Initialiser expandedGroups pour les nouvelles références
-  usedReferences.forEach(ref => {
-    if (expandedGroups[ref] === undefined) {
-      expandedGroups[ref] = true
-    }
-  })
+  // Filtrer les références selon la recherche
+  const searchLower = searchFilter.toLowerCase()
+  const filteredReferences = searchFilter
+    ? usedReferences.filter(ref => ref.toLowerCase().includes(searchLower))
+    : usedReferences
+
+  // Filtrer aussi les palettes sans référence par leur nom
+  const filteredUngrouped = searchFilter
+    ? ungroupedPalettes.filter(p => p.name.toLowerCase().includes(searchLower))
+    : ungroupedPalettes
+
+  // Déterminer si un groupe doit être ouvert
+  // - Par défaut fermé
+  // - Ouvert si l'utilisateur l'a ouvert manuellement
+  // - Ouvert automatiquement si recherche active
+  function isGroupExpanded(reference) {
+    if (searchFilter) return true // Ouvrir si recherche active
+    if (expandedGroups[reference] !== undefined) return expandedGroups[reference]
+    return false // Fermé par défaut
+  }
 
   const PaletteCard = ({ palette }) => {
     const extraCartons = palette.extraCartons || 0
@@ -174,7 +188,7 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
 
   const ReferenceSection = ({ reference, palettesInGroup }) => {
     const stats = calculateGroupStats(palettesInGroup)
-    const isExpanded = expandedGroups[reference] !== false
+    const isExpanded = isGroupExpanded(reference)
 
     return (
       <div className="mb-4">
@@ -203,8 +217,10 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
               </div>
               <div className="text-xs text-slate-500">
                 {stats.totalPresent}/{stats.totalCapacity}
-                {stats.totalExtra > 0 && (
-                  <span className="text-amber-600"> +{stats.totalExtra}</span>
+                {stats.totalExtra !== 0 && (
+                  <span className={stats.totalExtra >= 0 ? 'text-amber-600' : 'text-red-600'}>
+                    {' '}{stats.totalExtra >= 0 ? '+' : ''}{stats.totalExtra}
+                  </span>
                 )}
               </div>
             </div>
@@ -233,10 +249,22 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
     )
   }
 
+  // Message si aucun résultat
+  if (searchFilter && filteredReferences.length === 0 && filteredUngrouped.length === 0) {
+    return (
+      <div className="text-center py-8 text-slate-400">
+        <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <p>Aucune référence trouvée pour "{searchFilter}"</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
       {/* Références avec leurs palettes */}
-      {usedReferences.map(reference => {
+      {filteredReferences.map(reference => {
         const palettesInGroup = groupedPalettes[reference] || []
         if (palettesInGroup.length === 0) return null
         return (
@@ -245,13 +273,13 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
       })}
 
       {/* Palettes sans référence */}
-      {ungroupedPalettes.length > 0 && (
+      {filteredUngrouped.length > 0 && (
         <div>
-          {usedReferences.length > 0 && (
+          {filteredReferences.length > 0 && (
             <h3 className="text-sm font-medium text-slate-400 mb-3">Sans référence</h3>
           )}
           <div className="space-y-3">
-            {ungroupedPalettes.map(palette => (
+            {filteredUngrouped.map(palette => (
               <PaletteCard key={palette.id} palette={palette} />
             ))}
           </div>
