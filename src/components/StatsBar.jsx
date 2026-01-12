@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function StatsBar({ present, capacity, fillRate, extraCartons, totalPresent, name, onBack, onExtraCartonsChange }) {
+export default function StatsBar({ present, capacity, fillRate, extraCartons, totalPresent, name, onBack, onSave, onExtraCartonsChange }) {
   const [showExtraInput, setShowExtraInput] = useState(false)
   const [inputValue, setInputValue] = useState(extraCartons.toString())
 
@@ -29,6 +29,19 @@ export default function StatsBar({ present, capacity, fillRate, extraCartons, to
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
+
+        {/* Bouton sauvegarder */}
+        {onSave && (
+          <button
+            onClick={onSave}
+            className="p-2 hover:bg-green-100 active:bg-green-200 rounded-lg transition-colors"
+            title="Sauvegarder"
+          >
+            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        )}
 
         {/* Nom */}
         <div className="flex-1 text-center">

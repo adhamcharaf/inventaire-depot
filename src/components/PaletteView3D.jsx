@@ -331,6 +331,7 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         totalPresent={totalPresent}
         name={palette.name}
         onBack={onBack}
+        onSave={() => onUpdate({ ...palette, cubes, extraCartons })}
         onExtraCartonsChange={handleExtraCartonsChange}
       />
 
