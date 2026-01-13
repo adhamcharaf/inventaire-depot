@@ -169,9 +169,11 @@ export default function ManualCount({ onBack }) {
   }
 
   function clearAllCounts() {
-    if (window.confirm('Supprimer tous les comptages ? Cette action est irréversible.')) {
-      setCounts({})
-      setCurrentRef(null)
+    if (window.confirm('Supprimer tous les comptages ?')) {
+      if (window.confirm('Êtes-vous vraiment sûr ? Cette action est irréversible.')) {
+        setCounts({})
+        setCurrentRef(null)
+      }
     }
   }
 

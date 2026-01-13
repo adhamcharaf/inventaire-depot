@@ -14,8 +14,10 @@ export default function Home({
   const [search, setSearch] = useState('')
 
   function handleDeleteAll() {
-    if (window.confirm('Supprimer toutes les palettes ? Cette action est irréversible.')) {
-      onDeleteAll()
+    if (window.confirm('Supprimer toutes les palettes ?')) {
+      if (window.confirm('Êtes-vous vraiment sûr ? Cette action est irréversible.')) {
+        onDeleteAll()
+      }
     }
   }
 
