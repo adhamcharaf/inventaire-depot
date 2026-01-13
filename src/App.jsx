@@ -11,6 +11,7 @@ import {
   getPalette,
   updatePalette,
   deletePalette,
+  deleteAllPalettes,
   updatePaletteReference
 } from './db/indexeddb'
 
@@ -68,6 +69,11 @@ export default function App() {
     await loadData()
   }
 
+  async function handleDeleteAll() {
+    await deleteAllPalettes()
+    await loadData()
+  }
+
   async function handleUpdatePalette(updated) {
     await updatePalette(updated)
     setCurrentPalette(updated)
@@ -102,6 +108,7 @@ export default function App() {
           onNew={() => setScreen('form')}
           onResume={handleResume}
           onDelete={handleDelete}
+          onDeleteAll={handleDeleteAll}
           onChangeReference={handleChangeReference}
           onBack={handleBackToModeSelector}
         />

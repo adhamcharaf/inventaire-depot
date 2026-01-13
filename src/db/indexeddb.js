@@ -226,3 +226,16 @@ export async function updatePaletteReference(paletteId, reference) {
   }
   return null
 }
+
+export async function deleteAllPalettes() {
+  const database = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(STORE_NAME, 'readwrite')
+    const store = tx.objectStore(STORE_NAME)
+    const request = store.clear()
+
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
