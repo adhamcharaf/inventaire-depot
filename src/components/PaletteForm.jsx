@@ -243,7 +243,8 @@ export default function PaletteForm({ onCreate, onBack }) {
                     type="number"
                     min="1"
                     value={base}
-                    onChange={(e) => setBase(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => setBase(e.target.value === '' ? '' : parseInt(e.target.value))}
+                    onBlur={(e) => setBase(Math.max(1, parseInt(e.target.value) || 1))}
                     className="w-full px-4 py-3 text-lg font-bold text-center border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                   />
                 </div>
@@ -256,7 +257,8 @@ export default function PaletteForm({ onCreate, onBack }) {
                     type="number"
                     min="1"
                     value={simpleHeight}
-                    onChange={(e) => setSimpleHeight(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => setSimpleHeight(e.target.value === '' ? '' : parseInt(e.target.value))}
+                    onBlur={(e) => setSimpleHeight(Math.max(1, parseInt(e.target.value) || 1))}
                     className="w-full px-4 py-3 text-lg font-bold text-center border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                   />
                 </div>

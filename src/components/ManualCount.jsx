@@ -32,15 +32,41 @@ function evaluateExpression(input) {
   }
 }
 
+const STORAGE_KEY = 'manualCountData'
+
+// Charger les données depuis localStorage
+function loadFromStorage() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY)
+    return data ? JSON.parse(data) : {}
+  } catch {
+    return {}
+  }
+}
+
+// Sauvegarder dans localStorage
+function saveToStorage(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch {
+    // localStorage non disponible
+  }
+}
+
 export default function ManualCount({ onBack }) {
   // État: { reference: { entries: [{expression, result}, ...], total: 25 }, ... }
-  const [counts, setCounts] = useState({})
+  const [counts, setCounts] = useState(loadFromStorage)
   const [currentRef, setCurrentRef] = useState(null)
   const [inputValue, setInputValue] = useState('')
   const [search, setSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [filteredRefs, setFilteredRefs] = useState([])
   const dropdownRef = useRef(null)
+
+  // Sauvegarder automatiquement quand counts change
+  useEffect(() => {
+    saveToStorage(counts)
+  }, [counts])
 
   // Filtrer les références
   useEffect(() => {
@@ -173,14 +199,14 @@ export default function ManualCount({ onBack }) {
       {/* Header */}
       <header className="bg-amber-500 text-white px-4 py-4 flex items-center justify-between">
         <button
-          onClick={onBack}
+          onClick={() => currentRef ? setCurrentRef(null) : onBack()}
           className="p-2 -ml-2 hover:bg-amber-600 rounded-lg transition-colors"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-xl font-bold">Comptage Manuel</h1>
+        <h1 className="text-xl font-bold">{currentRef ? currentRef : 'Comptage Manuel'}</h1>
         {usedRefs.length > 0 && (
           <button
             onClick={exportCSV}

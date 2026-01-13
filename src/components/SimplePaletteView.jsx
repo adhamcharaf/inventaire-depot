@@ -31,7 +31,10 @@ export default function SimplePaletteView({ palette, onUpdate, onBack }) {
       {/* Header */}
       <header className="bg-purple-500 text-white px-4 py-4 flex items-center justify-between">
         <button
-          onClick={onBack}
+          onClick={() => {
+            onUpdate({ ...palette, extraCartons })
+            onBack()
+          }}
           className="p-2 -ml-2 hover:bg-purple-600 rounded-lg transition-colors"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
