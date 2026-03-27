@@ -110,16 +110,35 @@ function UserFlow() {
   )
 }
 
+function LoadingScreen() {
+  const [showFallback, setShowFallback] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowFallback(true), 8000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 p-6">
+      <div className="text-slate-400">Chargement...</div>
+      {showFallback && (
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors"
+        >
+          Recharger l'application
+        </button>
+      )}
+    </div>
+  )
+}
+
 function AppRouter() {
   const { profile, loading, signOut } = useAuth()
   const [showLogin, setShowLogin] = useState(false)
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-400">Chargement...</div>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   // Authenticated: admin or chef

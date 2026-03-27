@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
+const SESSION_TIMEOUT = 5000 // 5s max to wait for getSession
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -10,15 +12,38 @@ export function AuthProvider({ children }) {
   const fetchingRef = useRef(false)
 
   useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session)
-      if (session) {
-        await fetchProfile(session.user.id)
-      } else {
+    let timeoutId = null
+    let resolved = false
+
+    // Safety timeout: if getSession hangs (offline PWA), stop loading
+    timeoutId = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        console.warn('Auth timeout: getSession took too long, continuing as anon')
         setLoading(false)
       }
-    })
+    }, SESSION_TIMEOUT)
+
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (resolved) return // timeout already fired
+        resolved = true
+        clearTimeout(timeoutId)
+
+        setSession(session)
+        if (session) {
+          await fetchProfile(session.user.id)
+        } else {
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        if (resolved) return
+        resolved = true
+        clearTimeout(timeoutId)
+        console.error('getSession error:', err)
+        setLoading(false)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
@@ -30,11 +55,13 @@ export function AuthProvider({ children }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchProfile(userId) {
-    // Prevent duplicate concurrent fetches
     if (fetchingRef.current) return
     fetchingRef.current = true
 
