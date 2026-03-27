@@ -1,5 +1,5 @@
 const DB_NAME = 'inventaire-palettes'
-const DB_VERSION = 4
+const DB_VERSION = 5
 const STORE_NAME = 'palettes'
 const GROUPS_STORE = 'groups' // Gardé pour migration
 
@@ -80,6 +80,35 @@ function openDB() {
           paletteStore.deleteIndex('groupId')
         }
       }
+
+      // Migration v4 → v5: add session/user/sync fields
+      if (event.oldVersion < 5) {
+        const paletteStore = tx.objectStore(STORE_NAME)
+
+        // Add sessionId index
+        if (!paletteStore.indexNames.contains('sessionId')) {
+          paletteStore.createIndex('sessionId', 'sessionId', { unique: false })
+        }
+        // Add syncStatus index
+        if (!paletteStore.indexNames.contains('syncStatus')) {
+          paletteStore.createIndex('syncStatus', 'syncStatus', { unique: false })
+        }
+
+        // Migrate existing palettes: add new fields
+        const cursorRequest = paletteStore.openCursor()
+        cursorRequest.onsuccess = (e) => {
+          const cursor = e.target.result
+          if (cursor) {
+            const palette = cursor.value
+            if (!palette.sessionId) palette.sessionId = null
+            if (!palette.userName) palette.userName = null
+            if (!palette.syncStatus) palette.syncStatus = 'local'
+            if (!palette.submittedAt) palette.submittedAt = null
+            cursor.update(palette)
+            cursor.continue()
+          }
+        }
+      }
     }
   })
 }
@@ -113,7 +142,7 @@ function calculateStats(cubes, dimensions, extraCartons = 0) {
   }
 }
 
-export async function createPalette(dimensions, name = '', reference = null) {
+export async function createPalette(dimensions, name = '', reference = null, sessionId = null, userName = null) {
   const database = await openDB()
   const cubes = generateFullCubes(dimensions)
   const now = Date.now()
@@ -126,6 +155,10 @@ export async function createPalette(dimensions, name = '', reference = null) {
     extraCartons: 0,
     stats: calculateStats(cubes, dimensions, 0),
     reference,
+    sessionId,
+    userName,
+    syncStatus: 'local',
+    submittedAt: null,
     createdAt: now,
     updatedAt: now
   }
@@ -208,6 +241,48 @@ export async function updatePaletteReference(paletteId, reference) {
 
   if (palette) {
     palette.reference = reference
+    return updatePalette(palette)
+  }
+  return null
+}
+
+// Submit all unsubmitted palettes for a session/user
+export async function submitAllPalettes(sessionId, userName) {
+  const all = await getAllPalettes()
+  const toSubmit = all.filter(p =>
+    p.sessionId === sessionId &&
+    p.userName === userName &&
+    p.syncStatus === 'local'
+  )
+
+  const database = await openDB()
+  const tx = database.transaction(STORE_NAME, 'readwrite')
+  const store = tx.objectStore(STORE_NAME)
+  const now = Date.now()
+
+  for (const palette of toSubmit) {
+    palette.syncStatus = 'pending'
+    palette.submittedAt = now
+    store.put(palette)
+  }
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve(toSubmit.length)
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+// Get all palettes pending sync
+export async function getPendingPalettes() {
+  const all = await getAllPalettes()
+  return all.filter(p => p.syncStatus === 'pending')
+}
+
+// Mark a palette as synced
+export async function markPaletteSynced(id) {
+  const palette = await getPalette(id)
+  if (palette) {
+    palette.syncStatus = 'synced'
     return updatePalette(palette)
   }
   return null

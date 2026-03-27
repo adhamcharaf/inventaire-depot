@@ -15,3 +15,7 @@ export const CUBE_COLORS = {
 
 // Auto-save interval (ms)
 export const AUTO_SAVE_INTERVAL = 5000
+
+// Supabase
+export const SUPABASE_URL = 'https://hmibxjmtjdvzpcizaymj.supabase.co'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtaWJ4am10amR2enBjaXpheW1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MTgzODEsImV4cCI6MjA5MDE5NDM4MX0.JUYwyXJcrpjKseKdNFM6SVgA2B2MTRwTdKhFuoVJPps'

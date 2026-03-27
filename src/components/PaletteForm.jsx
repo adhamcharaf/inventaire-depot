@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { PALETTE_CONFIG } from '../lib/config'
-import references from '../data/references'
+import { useSession } from '../context/SessionContext'
+import { supabase } from '../lib/supabase'
 
-export default function PaletteForm({ onCreate, onBack }) {
+export default function PaletteForm({ onCreate, onBack, preselectedReference }) {
+  const { sessionId } = useSession()
   const [length, setLength] = useState(PALETTE_CONFIG.length.default)
   const [width, setWidth] = useState(PALETTE_CONFIG.width.default)
   const [height, setHeight] = useState(PALETTE_CONFIG.height.default)
   const [name, setName] = useState('')
-  const [reference, setReference] = useState(null)
+  const [reference, setReference] = useState(preselectedReference || null)
+
+  // References from session
+  const [sessionRefs, setSessionRefs] = useState([])
+  const [loadingRefs, setLoadingRefs] = useState(true)
 
   // Autocomplete
   const [search, setSearch] = useState('')
@@ -17,21 +23,43 @@ export default function PaletteForm({ onCreate, onBack }) {
 
   const capacity = length * width * height
 
-  // Filtrer les références quand on tape
+  // Load references for this session from Supabase
+  useEffect(() => {
+    if (!sessionId) return
+    setLoadingRefs(true)
+    supabase.rpc('get_session_references', { p_session_id: sessionId })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setSessionRefs(data.map(r => r.reference))
+        } else {
+          console.error('Failed to load session refs:', error)
+          setSessionRefs([])
+        }
+        setLoadingRefs(false)
+      })
+  }, [sessionId])
+
+  // Filter references when typing
   useEffect(() => {
     if (search.length > 0) {
-      const filtered = references
-        .filter(ref => ref.toLowerCase().includes(search.toLowerCase()))
-        .slice(0, 10) // Limiter à 10 résultats
+      const term = search.toLowerCase()
+      const filtered = sessionRefs
+        .filter(ref => ref.toLowerCase().includes(term))
+        .slice(0, 10)
+
+      // Check if search matches exactly an existing ref
+      const exactMatch = sessionRefs.some(r => r.toLowerCase() === term)
+
       setFilteredRefs(filtered)
-      setShowDropdown(filtered.length > 0)
+      // Show dropdown if there are matches OR if user typed something (to show "add manual" option)
+      setShowDropdown(filtered.length > 0 || (!exactMatch && search.trim().length > 0))
     } else {
       setFilteredRefs([])
       setShowDropdown(false)
     }
-  }, [search])
+  }, [search, sessionRefs])
 
-  // Fermer le dropdown si clic à l'extérieur
+  // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -42,14 +70,18 @@ export default function PaletteForm({ onCreate, onBack }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Sélectionner une référence
   function selectReference(ref) {
     setSearch('')
     setReference(ref)
     setShowDropdown(false)
   }
 
-  // Effacer la référence sélectionnée
+  function addManualReference() {
+    const trimmed = search.trim().toUpperCase()
+    if (!trimmed) return
+    selectReference(trimmed)
+  }
+
   function clearReference() {
     setReference(null)
   }
@@ -58,6 +90,10 @@ export default function PaletteForm({ onCreate, onBack }) {
     e.preventDefault()
     onCreate({ length, width, height }, name, reference)
   }
+
+  const isManualRef = reference && !sessionRefs.includes(reference)
+  const searchNotInSession = search.trim().length > 0 &&
+    !sessionRefs.some(r => r.toLowerCase() === search.trim().toLowerCase())
 
   return (
     <div className="h-full flex flex-col safe-top safe-bottom bg-white">
@@ -75,34 +111,45 @@ export default function PaletteForm({ onCreate, onBack }) {
       </header>
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-auto">
-        {/* Référence sélectionnée ou recherche (obligatoire) */}
+        {/* Reference */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-slate-600 mb-2">
-            Référence article <span className="text-red-500">*</span>
+            Reference article <span className="text-red-500">*</span>
           </label>
 
           {reference ? (
-            // Afficher la référence sélectionnée
-            <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
-              <span className="flex-1 font-medium text-blue-700">{reference}</span>
+            <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${
+              isManualRef
+                ? 'bg-amber-50 border-amber-200'
+                : 'bg-blue-50 border-blue-200'
+            }`}>
+              <span className={`flex-1 font-medium ${isManualRef ? 'text-amber-700' : 'text-blue-700'}`}>
+                {reference}
+              </span>
+              {isManualRef && (
+                <span className="text-xs bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded">
+                  hors liste
+                </span>
+              )}
               <button
                 type="button"
                 onClick={clearReference}
                 className="p-1 hover:bg-blue-100 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
+          ) : loadingRefs ? (
+            <div className="px-4 py-3 text-slate-400 text-sm">Chargement des references...</div>
           ) : (
-            // Barre de recherche
             <div className="relative" ref={dropdownRef}>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tapez pour rechercher..."
+                placeholder={sessionRefs.length > 0 ? 'Rechercher une reference...' : 'Aucune reference dans cette session'}
                 className="w-full px-4 py-3 border border-amber-300 bg-amber-50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
               {showDropdown && (
@@ -112,15 +159,28 @@ export default function PaletteForm({ onCreate, onBack }) {
                       <button
                         type="button"
                         onClick={() => selectReference(ref)}
-                        className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors"
                       >
                         {ref}
                       </button>
                     </li>
                   ))}
+                  {searchNotInSession && (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={addManualReference}
+                        className="w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors border-t border-slate-100 text-amber-700"
+                      >
+                        + Ajouter "{search.trim().toUpperCase()}" (hors liste)
+                      </button>
+                    </li>
+                  )}
                 </ul>
               )}
-              <p className="text-xs text-amber-600 mt-1">Sélectionnez une référence pour continuer</p>
+              <p className="text-xs text-amber-600 mt-1">
+                {sessionRefs.length} reference(s) disponible(s) — ou saisissez une reference manuelle
+              </p>
             </div>
           )}
         </div>
@@ -134,7 +194,7 @@ export default function PaletteForm({ onCreate, onBack }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Par défaut: date et heure"
+            placeholder="Par defaut: date et heure"
             className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
           />
         </div>
@@ -148,7 +208,6 @@ export default function PaletteForm({ onCreate, onBack }) {
             min={PALETTE_CONFIG.length.min}
             max={PALETTE_CONFIG.length.max}
           />
-
           <DimensionSlider
             label="Largeur (l)"
             value={width}
@@ -156,7 +215,6 @@ export default function PaletteForm({ onCreate, onBack }) {
             min={PALETTE_CONFIG.width.min}
             max={PALETTE_CONFIG.width.max}
           />
-
           <DimensionSlider
             label="Hauteur (H)"
             value={height}
@@ -166,10 +224,10 @@ export default function PaletteForm({ onCreate, onBack }) {
           />
         </div>
 
-        {/* Capacité + Bouton */}
+        {/* Capacite + Bouton */}
         <div className="mt-6 pt-4 border-t border-slate-100">
           <div className="text-center mb-4">
-            <span className="text-slate-500">Capacité totale : </span>
+            <span className="text-slate-500">Capacite totale : </span>
             <span className="text-2xl font-bold text-blue-500">{capacity}</span>
             <span className="text-slate-500"> articles</span>
           </div>
@@ -183,7 +241,7 @@ export default function PaletteForm({ onCreate, onBack }) {
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
-            Créer la palette
+            Creer la palette
           </button>
         </div>
       </form>

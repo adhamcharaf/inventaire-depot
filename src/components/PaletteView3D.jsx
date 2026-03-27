@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { createScene, handleResize, setRendererPerformanceMode } from '../lib/three-scene'
 import { CubeManager, RaycastManager } from '../lib/cube-manager'
 import { removeCubeWithGravity, addCube, generateFullCubes, emptyAllCubes } from '../lib/gravity'
-import { useAutoSave } from '../hooks/useAutoSave'
+// useAutoSave replaced by immediate save on cube change
 import StatsBar from './StatsBar'
 import Controls from './Controls'
 
@@ -65,12 +65,21 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
   const lastPinchDistRef = useRef(0)
   const isPinchingRef = useRef(false)
 
-  // Auto-save
-  const handleSave = useCallback((p) => {
-    onUpdate({ ...p, cubes, extraCartons })
-  }, [cubes, extraCartons, onUpdate])
+  // Save on every cube change (immediate)
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    onUpdate({ ...palette, cubes, extraCartons })
+  }, [cubes])
 
-  useAutoSave({ ...palette, cubes, extraCartons }, handleSave)
+  // Save before leaving
+  const handleBack = useCallback(() => {
+    onUpdate({ ...palette, cubes, extraCartons })
+    onBack()
+  }, [palette, cubes, extraCartons, onUpdate, onBack])
 
   // Gestion des cartons supplémentaires
   const handleExtraCartonsChange = useCallback((value) => {
@@ -330,7 +339,7 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         extraCartons={extraCartons}
         totalPresent={totalPresent}
         name={palette.name}
-        onBack={onBack}
+        onBack={handleBack}
         onExtraCartonsChange={handleExtraCartonsChange}
       />
 
