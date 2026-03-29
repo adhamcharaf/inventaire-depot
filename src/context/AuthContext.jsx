@@ -88,9 +88,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signIn(email, password) {
-    setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setLoading(false)
     return { error }
   }
 
