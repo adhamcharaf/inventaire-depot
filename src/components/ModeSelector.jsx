@@ -1,7 +1,14 @@
-export default function ModeSelector({ onSelectMode }) {
+export default function ModeSelector({ onSelectMode, onBack }) {
   return (
     <div className="h-full flex flex-col safe-top safe-bottom bg-gradient-to-br from-blue-500 to-blue-600">
-      <header className="px-4 py-8 text-center text-white">
+      <header className="px-4 py-8 text-center text-white relative">
+        {onBack && (
+          <button onClick={onBack} className="absolute left-4 top-8 p-2 hover:bg-blue-700/50 rounded-lg transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
         <h1 className="text-3xl font-bold">Inventaire Palettes</h1>
         <p className="text-blue-100 mt-2">Choisissez votre mode de comptage</p>
       </header>

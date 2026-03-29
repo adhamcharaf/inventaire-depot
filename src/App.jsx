@@ -21,7 +21,7 @@ import {
 } from './db/indexeddb'
 import { supabase } from './lib/supabase'
 
-function UserFlow() {
+function UserFlow({ onBackToMode }) {
   const { sessionId, userName, clearSession } = useSession()
   const [screen, setScreen] = useState('home')
   const [palettes, setPalettes] = useState([])
@@ -103,6 +103,7 @@ function UserFlow() {
           onDelete={handleDelete}
           onChangeReference={handleChangeReference}
           onChangeSession={clearSession}
+          onBackToMode={onBackToMode}
           onRefresh={loadData}
           sessionRefs={sessionRefs}
         />
@@ -191,22 +192,27 @@ function AppRouter() {
 }
 
 function AnonymousFlow({ onLogin }) {
-  const { sessionId, userName } = useSession()
+  const { sessionId, userName, clearSession } = useSession()
   const [mode, setMode] = useState(null)
+
+  function handleBackToEntry() {
+    clearSession()
+    setMode(null)
+  }
 
   if (!sessionId || !userName) {
     return <UserEntry onReady={() => {}} onLogin={onLogin} />
   }
 
   if (!mode) {
-    return <ModeSelector onSelectMode={setMode} />
+    return <ModeSelector onSelectMode={setMode} onBack={handleBackToEntry} />
   }
 
   if (mode === 'manual') {
     return <ManualCount onBack={() => setMode(null)} />
   }
 
-  return <UserFlow />
+  return <UserFlow onBackToMode={() => setMode(null)} />
 }
 
 export default function App() {
