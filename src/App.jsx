@@ -179,7 +179,7 @@ function AppRouter() {
 
   // Login screen
   if (showLogin) {
-    return <LoginScreen onBack={() => setShowLogin(false)} />
+    return <LoginScreen key="login" onBack={() => setShowLogin(false)} />
   }
 
   // Anonymous user flow

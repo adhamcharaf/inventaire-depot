@@ -35,14 +35,22 @@ export default function LoginScreen({ onBack }) {
     setLoading(true)
 
     try {
-      const { error } = await signIn(email, password)
-      if (error) {
-        setError(getErrorMessage(error))
+      const result = await signIn(email, password)
+      console.log('signIn result:', result)
+      if (result.error) {
+        const msg = getErrorMessage(result.error)
+        console.log('Setting error:', msg)
+        setError(msg)
+        setLoading(false)
+        return
       }
     } catch (err) {
+      console.error('signIn exception:', err)
       setError('Impossible de se connecter. Verifiez votre connexion.')
+      setLoading(false)
+      return
     }
-    setLoading(false)
+    // Success: loading will be resolved by AuthContext via onAuthStateChange
   }
 
   return (
