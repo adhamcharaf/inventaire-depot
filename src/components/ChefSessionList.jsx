@@ -36,6 +36,12 @@ export default function ChefSessionList({ onSelect }) {
     })
 
     if (!error) {
+      await supabase.from('audit_log').insert({
+        session_id: null,
+        user_id: profile.id,
+        action: 'session_created',
+        details: { name: newName.trim() },
+      })
       setNewName('')
       await loadSessions()
     }
@@ -51,6 +57,12 @@ export default function ChefSessionList({ onSelect }) {
         closed_at: newStatus === 'closed' ? new Date().toISOString() : null,
       })
       .eq('id', session.id)
+    await supabase.from('audit_log').insert({
+      session_id: session.id,
+      user_id: profile.id,
+      action: newStatus === 'closed' ? 'session_closed' : 'session_created',
+      details: { name: session.name },
+    })
     await loadSessions()
   }
 

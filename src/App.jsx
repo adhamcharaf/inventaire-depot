@@ -3,11 +3,14 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { SessionProvider, useSession } from './context/SessionContext'
 import LoginScreen from './components/LoginScreen'
 import UserEntry from './components/UserEntry'
+import ModeSelector from './components/ModeSelector'
+import ManualCount from './components/ManualCount'
 import AdminPanel from './components/AdminPanel'
 import ChefDashboard from './components/ChefDashboard'
 import Home from './components/Home'
 import PaletteForm from './components/PaletteForm'
 import PaletteView3D from './components/PaletteView3D'
+import NetworkStatus from './components/NetworkStatus'
 import {
   getAllPalettes,
   createPalette,
@@ -16,6 +19,7 @@ import {
   deletePalette,
   updatePaletteReference
 } from './db/indexeddb'
+import { supabase } from './lib/supabase'
 
 function UserFlow() {
   const { sessionId, userName, clearSession } = useSession()
@@ -23,15 +27,25 @@ function UserFlow() {
   const [palettes, setPalettes] = useState([])
   const [currentPalette, setCurrentPalette] = useState(null)
   const [preselectedRef, setPreselectedRef] = useState(null)
+  const [sessionRefs, setSessionRefs] = useState([])
 
   useEffect(() => {
     loadData()
+    loadSessionRefs()
   }, [sessionId])
+
+  async function loadSessionRefs() {
+    if (!sessionId) return
+    const { data, error } = await supabase.rpc('get_session_references', { p_session_id: sessionId })
+    if (!error && data) {
+      setSessionRefs(data.map(r => r.reference))
+    }
+  }
 
   async function loadData() {
     const all = await getAllPalettes()
     const filtered = all.filter(p =>
-      p.sessionId === sessionId && p.userName === userName
+      p.sessionId === sessionId && p.userName === userName && p.countMode !== 'manual'
     )
     setPalettes(filtered)
   }
@@ -90,6 +104,7 @@ function UserFlow() {
           onChangeReference={handleChangeReference}
           onChangeSession={clearSession}
           onRefresh={loadData}
+          sessionRefs={sessionRefs}
         />
       )}
       {screen === 'form' && (
@@ -144,10 +159,20 @@ function AppRouter() {
   // Authenticated: admin or chef
   if (profile) {
     if (profile.role === 'admin') {
-      return <AdminPanel onSignOut={signOut} />
+      return (
+        <>
+          <NetworkStatus />
+          <AdminPanel onSignOut={signOut} />
+        </>
+      )
     }
     if (profile.role === 'chef') {
-      return <ChefDashboard onSignOut={signOut} />
+      return (
+        <>
+          <NetworkStatus />
+          <ChefDashboard onSignOut={signOut} />
+        </>
+      )
     }
   }
 
@@ -159,6 +184,7 @@ function AppRouter() {
   // Anonymous user flow
   return (
     <SessionProvider>
+      <NetworkStatus />
       <AnonymousFlow onLogin={() => setShowLogin(true)} />
     </SessionProvider>
   )
@@ -166,13 +192,21 @@ function AppRouter() {
 
 function AnonymousFlow({ onLogin }) {
   const { sessionId, userName } = useSession()
-  const [ready, setReady] = useState(Boolean(sessionId && userName))
+  const [mode, setMode] = useState(null)
 
-  if (sessionId && userName && ready) {
-    return <UserFlow />
+  if (!sessionId || !userName) {
+    return <UserEntry onReady={() => {}} onLogin={onLogin} />
   }
 
-  return <UserEntry onReady={() => setReady(true)} onLogin={onLogin} />
+  if (!mode) {
+    return <ModeSelector onSelectMode={setMode} />
+  }
+
+  if (mode === 'manual') {
+    return <ManualCount onBack={() => setMode(null)} />
+  }
+
+  return <UserFlow />
 }
 
 export default function App() {

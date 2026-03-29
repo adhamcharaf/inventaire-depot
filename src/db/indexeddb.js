@@ -278,6 +278,59 @@ export async function getPendingPalettes() {
   return all.filter(p => p.syncStatus === 'pending')
 }
 
+// Manual count CRUD
+export async function createManualCount(reference, total, entries, sessionId, userName, existingId = null) {
+  const database = await openDB()
+  const now = Date.now()
+
+  const record = {
+    id: existingId || generateId(),
+    name: `Manuel: ${reference}`,
+    dimensions: null,
+    cubes: [],
+    extraCartons: 0,
+    stats: { capacity: 0, present: 0, extraCartons: 0, totalPresent: total, fillRate: '0' },
+    reference,
+    sessionId,
+    userName,
+    countMode: 'manual',
+    manualCount: total,
+    entries,
+    syncStatus: 'local',
+    submittedAt: null,
+    createdAt: existingId ? undefined : now,
+    updatedAt: now,
+  }
+
+  // Preserve createdAt if updating
+  if (existingId) {
+    const existing = await getPalette(existingId)
+    if (existing) record.createdAt = existing.createdAt
+  }
+  if (!record.createdAt) record.createdAt = now
+
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(STORE_NAME, 'readwrite')
+    const store = tx.objectStore(STORE_NAME)
+    const request = store.put(record)
+    request.onsuccess = () => resolve(record)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getAllManualCounts(sessionId, userName) {
+  const all = await getAllPalettes()
+  return all.filter(p =>
+    p.sessionId === sessionId &&
+    p.userName === userName &&
+    p.countMode === 'manual'
+  )
+}
+
+export async function deleteManualCount(id) {
+  return deletePalette(id)
+}
+
 // Mark a palette as synced
 export async function markPaletteSynced(id) {
   const palette = await getPalette(id)

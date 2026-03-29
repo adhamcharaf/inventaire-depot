@@ -248,11 +248,13 @@ export default function PaletteView3D({ palette, onUpdate, onBack }) {
         saveToHistory(cubes)
         const newCubes = removeCubeWithGravity(cubes, cube.x, cube.y, cube.z, palette.dimensions.height)
         setCubes(newCubes)
+        if (navigator.vibrate) navigator.vibrate(10)
       } else {
         // Sauvegarder puis ajouter le cube (si support existe)
         saveToHistory(cubes)
         const newCubes = addCube(cubes, cube.x, cube.y, cube.z)
         setCubes(newCubes)
+        if (navigator.vibrate) navigator.vibrate(10)
       }
     }
   }

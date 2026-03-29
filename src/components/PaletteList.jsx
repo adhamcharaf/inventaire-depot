@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import references from '../data/references'
 
-export default function PaletteList({ palettes, onResume, onDelete, onChangeReference }) {
+export default function PaletteList({ palettes, onResume, onDelete, onChangeReference, sessionRefs = [] }) {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [expandedGroups, setExpandedGroups] = useState({})
 
@@ -114,7 +113,7 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
 
         <div className="flex items-center gap-2">
           {/* Sélecteur de référence */}
-          {references.length > 0 && (
+          {sessionRefs.length > 0 && (
             <select
               value={palette.reference || ''}
               onClick={(e) => e.stopPropagation()}
@@ -125,7 +124,7 @@ export default function PaletteList({ palettes, onResume, onDelete, onChangeRefe
               className="text-xs px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 max-w-[120px]"
             >
               <option value="">Sans réf.</option>
-              {references.map(ref => (
+              {sessionRefs.map(ref => (
                 <option key={ref} value={ref}>{ref}</option>
               ))}
             </select>

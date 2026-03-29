@@ -42,8 +42,30 @@ export default function ChefComparisonTable({ session }) {
       reference,
       requested_by: profile.id,
     })
+    // Audit log
+    await supabase.from('audit_log').insert({
+      session_id: session.id,
+      user_id: profile.id,
+      action: 'recount_requested',
+      reference,
+    })
     await loadData()
     setRequesting(null)
+  }
+
+  function exportComparisonCSV() {
+    const lines = ['reference;theorique;total_compte;ecart;' + userNames.join(';')]
+    rows.forEach(row => {
+      const userCols = userNames.map(name => row.perUser[name] || 0).join(';')
+      lines.push(`${row.reference};${row.expectedQty ?? ''};${row.totalCounted};${row.ecart ?? ''};${userCols}`)
+    })
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `comparaison-${session.name}-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   async function handleFulfillRecount(requestId) {
@@ -128,12 +150,22 @@ export default function ChefComparisonTable({ session }) {
         <h2 className="font-semibold text-slate-800">
           Comparaison — {rows.length} reference(s)
         </h2>
-        <button
-          onClick={loadData}
-          className="text-sm text-blue-500 hover:text-blue-700"
-        >
-          Actualiser
-        </button>
+        <div className="flex items-center gap-3">
+          {rows.length > 0 && (
+            <button
+              onClick={exportComparisonCSV}
+              className="text-sm text-green-600 hover:text-green-800"
+            >
+              Exporter CSV
+            </button>
+          )}
+          <button
+            onClick={loadData}
+            className="text-sm text-blue-500 hover:text-blue-700"
+          >
+            Actualiser
+          </button>
+        </div>
       </div>
 
       {rows.length === 0 ? (

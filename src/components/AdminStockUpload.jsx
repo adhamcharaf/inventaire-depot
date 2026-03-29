@@ -64,6 +64,12 @@ export default function AdminStockUpload() {
       } else {
         setSuccess(`${preview.length} references importees avec succes`)
         setPreview(null)
+        await supabase.from('audit_log').insert({
+          session_id: selectedSession,
+          user_id: profile.id,
+          action: 'stock_uploaded',
+          details: { count: preview.length },
+        })
       }
     } catch (err) {
       console.error('Stock upload exception:', err)

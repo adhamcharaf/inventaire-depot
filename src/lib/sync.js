@@ -42,6 +42,14 @@ export async function syncToSupabase() {
     } else {
       await markPaletteSynced(palette.id)
       synced++
+      // Audit log
+      await supabase.from('audit_log').insert({
+        session_id: palette.sessionId,
+        user_name: palette.userName,
+        action: 'count_synced',
+        reference: palette.reference,
+        details: { count: row.total_count, palette_name: palette.name, mode: palette.countMode || '3d' },
+      }).then(() => {}) // fire and forget
     }
   }
 

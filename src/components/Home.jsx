@@ -13,7 +13,8 @@ export default function Home({
   onDelete,
   onChangeReference,
   onChangeSession,
-  onRefresh
+  onRefresh,
+  sessionRefs = [],
 }) {
   const { sessionId, sessionName, userName, clearSession } = useSession()
   const [submitting, setSubmitting] = useState(false)
@@ -120,6 +121,7 @@ export default function Home({
               onResume={onResume}
               onDelete={onDelete}
               onChangeReference={onChangeReference}
+              sessionRefs={sessionRefs}
             />
           </>
         ) : (
